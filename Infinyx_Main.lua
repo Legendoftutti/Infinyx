@@ -14209,7 +14209,7 @@ local function cycleButton(card, y, name, value, values, callback)
     end)
     return b
 end
-do
+
 -- Build UI cards
 local coreCard = makeCard(aimContent, "Targeting", "Core aim behavior and acquisition rules.")
 local aimToggle = addToggleRow(coreCard, 62, "Aimbot", "Enable camera targeting.", false, function(v)
@@ -14404,7 +14404,6 @@ local function updateFovCircle()
     local mousePos = UserInputService:GetMouseLocation()
     fovCircle.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
     end
-end
 
 -- Drag handling for sliders
 UserInputService.InputChanged:Connect(function(input)
