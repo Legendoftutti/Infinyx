@@ -14242,253 +14242,113 @@ autoNote.Position = UDim2.fromOffset(16, 179)
 autoNote.Size = UDim2.new(1, -32, 0, 16)
 
 local espCard = makeCard(aimContent, "ESP", "Visual target awareness inside the Aimbot page.")
-local espRefreshRunning = false
+local espObjects = {}
+local espConnections = {}
 
-local function refreshUIESP()
-    if not espEnabledUI then return end
-    if espRefreshRunning then return end
-
-    espRefreshRunning = true
-    task.spawn(function()
-        -- Rebuild the player ESP so players who joined/respawned are always covered.
-        pcall(function()
-            execCmd("noesp")
-            task.wait()
-            execCmd("esp")
-        end)
-        espRefreshRunning = false
-    end)
+local function destroyPlayerESP(player)
+    local data = espObjects[player]
+    if data then
+        if data.highlight then data.highlight:Destroy() end
+        if data.billboard then data.billboard:Destroy() end
+        espObjects[player] = nil
+    end
 end
 
-addToggleRow(espCard, 62, "ESP", "Show player boxes and names.", espEnabledUI, function(v)
-    espEnabledUI = v
-    if v then
-        execCmd("esp")
-    else
-        execCmd("noesp")
-    end
-end)
-addToggleRow(espCard, 101, "ESP Team Logic", "Use existing team-aware ESP coloring.", true, function(v) end)
-local espInfo = label(espCard, "Reuses Infinyx's built‑in ESP system.", 8, C.muted)
-espInfo.Position = UDim2.fromOffset(16, 140)
-espInfo.Size = UDim2.new(1, -32, 0, 18)
+local function createPlayerESP(player)
+    if not espEnabledUI or player == Players.LocalPlayer then return end
+    local character = player.Character
+    local head = character and character:FindFirstChild("Head")
+    if not character or not head then return end
 
-local safetyCard = makeCard(aimContent, "Filters", "Prevent low-value or invalid targets.")
-addToggleRow(safetyCard, 62, "Knock Check", "Skip knocked / KO / platform-stunned targets.", knockCheck, function(v) knockCheck = v end)
-addToggleRow(safetyCard, 101, "Health Check", "Require the target to be above minimum health.", healthCheck, function(v) healthCheck = v end)
+    destroyPlayerESP(player)
 
-local healthValue = label(safetyCard, "Minimum Health: " .. tostring(minHealth), 9, C.accent2, Enum.Font.GothamBold)
-healthValue.Position = UDim2.fromOffset(16, 140)
-healthValue.Size = UDim2.new(1, -32, 0, 18)
-local healthSlider = Instance.new("Frame")
-healthSlider.BackgroundColor3 = C.panel3
-healthSlider.BorderSizePixel = 0
-healthSlider.Position = UDim2.fromOffset(16, 165)
-healthSlider.Size = UDim2.new(1, -32, 0, 7)
-healthSlider.Parent = safetyCard
-corner(healthSlider, 99)
-local healthFill = Instance.new("Frame")
-healthFill.BackgroundColor3 = C.accent
-healthFill.BorderSizePixel = 0
-healthFill.Size = UDim2.new(0, 0, 1, 0)
-healthFill.Parent = healthSlider
-corner(healthFill, 99)
-local healthDragging = false
-local function setHealthFromX(x)
-    local a = math.clamp((x - healthSlider.AbsolutePosition.X) / healthSlider.AbsoluteSize.X, 0, 1)
-    minHealth = math.floor(1 + a * 99 + 0.5)
-    healthValue.Text = "Minimum Health: " .. tostring(minHealth)
-    healthFill.Size = UDim2.new(a, 0, 1, 0)
-end
-healthSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        healthDragging = true
-        setHealthFromX(input.Position.X)
-    end
-end)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "InfinyxESP"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 0.72
+    highlight.OutlineTransparency = 0
+    highlight.FillColor = Color3.fromRGB(255, 70, 70)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.Parent = character
 
-local visualCard = makeCard(aimContent, "Visuals", "On-screen targeting feedback.")
-addToggleRow(visualCard, 62, "Draw FOV", "Display the active targeting radius.", showFov, function(v)
-    showFov = v
-    updateFovCircle()
-end)
-local fovValue = label(visualCard, "FOV: " .. tostring(fovRadius) .. " px", 9, C.accent2, Enum.Font.GothamBold)
-fovValue.Position = UDim2.fromOffset(16, 102)
-fovValue.Size = UDim2.new(1, -32, 0, 18)
-local fovSlider = Instance.new("Frame")
-fovSlider.BackgroundColor3 = C.panel3
-fovSlider.BorderSizePixel = 0
-fovSlider.Position = UDim2.fromOffset(16, 128)
-fovSlider.Size = UDim2.new(1, -32, 0, 7)
-fovSlider.Parent = visualCard
-corner(fovSlider, 99)
-local fovFill = Instance.new("Frame")
-fovFill.BackgroundColor3 = C.accent
-fovFill.BorderSizePixel = 0
-fovFill.Size = UDim2.new((fovRadius - 50) / 450, 0, 1, 0)
-fovFill.Parent = fovSlider
-corner(fovFill, 99)
-local fovDragging = false
-local function setFovFromX(x)
-    local a = math.clamp((x - fovSlider.AbsolutePosition.X) / fovSlider.AbsoluteSize.X, 0, 1)
-    fovRadius = math.floor(50 + a * 450 + 0.5)
-    fovValue.Text = "FOV: " .. tostring(fovRadius) .. " px"
-    fovFill.Size = UDim2.new(a, 0, 1, 0)
-    updateFovCircle()
-end
-fovSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        fovDragging = true
-        setFovFromX(input.Position.X)
-    end
-end)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "InfinyxESPName"
+    billboard.Adornee = head
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.fromOffset(180, 48)
+    billboard.StudsOffset = Vector3.new(0, 2.8, 0)
+    billboard.Parent = head
 
-local tuningCard = makeCard(aimContent, "Smoothing & Prediction", "Adjust responsiveness and movement lead.")
-local smoothValue = label(tuningCard, "Smoothing: " .. string.format("%.2f", aimSmoothness), 9, C.accent2, Enum.Font.GothamBold)
-smoothValue.Position = UDim2.fromOffset(16, 62)
-smoothValue.Size = UDim2.new(1, -32, 0, 18)
-local smoothSlider = Instance.new("Frame")
-smoothSlider.BackgroundColor3 = C.panel3
-smoothSlider.BorderSizePixel = 0
-smoothSlider.Position = UDim2.fromOffset(16, 88)
-smoothSlider.Size = UDim2.new(1, -32, 0, 7)
-smoothSlider.Parent = tuningCard
-corner(smoothSlider, 99)
-local smoothFill = Instance.new("Frame")
-smoothFill.BackgroundColor3 = C.accent
-smoothFill.BorderSizePixel = 0
-smoothFill.Size = UDim2.new(aimSmoothness, 0, 1, 0)
-smoothFill.Parent = smoothSlider
-corner(smoothFill, 99)
+    local labelObj = Instance.new("TextLabel")
+    labelObj.BackgroundTransparency = 1
+    labelObj.Size = UDim2.fromScale(1, 1)
+    labelObj.Font = Enum.Font.GothamBold
+    labelObj.TextSize = 13
+    labelObj.TextColor3 = Color3.new(1, 1, 1)
+    labelObj.TextStrokeTransparency = 0
+    labelObj.Text = player.DisplayName .. "  [" .. player.Name .. "]"
+    labelObj.Parent = billboard
 
-local predictionValue = label(tuningCard, "Prediction: " .. string.format("%.2f", predictionAmount), 9, C.accent2, Enum.Font.GothamBold)
-predictionValue.Position = UDim2.fromOffset(16, 116)
-predictionValue.Size = UDim2.new(1, -32, 0, 18)
-local predictionSlider = Instance.new("Frame")
-predictionSlider.BackgroundColor3 = C.panel3
-predictionSlider.BorderSizePixel = 0
-predictionSlider.Position = UDim2.fromOffset(16, 142)
-predictionSlider.Size = UDim2.new(1, -32, 0, 7)
-predictionSlider.Parent = tuningCard
-corner(predictionSlider, 99)
-local predictionFill = Instance.new("Frame")
-predictionFill.BackgroundColor3 = C.accent
-predictionFill.BorderSizePixel = 0
-predictionFill.Size = UDim2.new(predictionAmount / 0.5, 0, 1, 0)
-predictionFill.Parent = predictionSlider
-corner(predictionFill, 99)
-
-local smoothDragging = false
-local predictionDragging = false
-
-smoothSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        smoothDragging = true
-        local a = math.clamp((input.Position.X - smoothSlider.AbsolutePosition.X) / smoothSlider.AbsoluteSize.X, 0, 1)
-        aimSmoothness = math.max(0.03, a)
-        smoothValue.Text = "Smoothing: " .. string.format("%.2f", aimSmoothness)
-        smoothFill.Size = UDim2.new(a, 0, 1, 0)
-    end
-end)
-
-predictionSlider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        predictionDragging = true
-        local p = math.clamp((input.Position.X - predictionSlider.AbsolutePosition.X) / predictionSlider.AbsoluteSize.X, 0, 1)
-        predictionAmount = p * 0.5
-        predictionValue.Text = "Prediction: " .. string.format("%.2f", predictionAmount)
-        predictionFill.Size = UDim2.new(p, 0, 1, 0)
-    end
-end)
-
--- FOV Circle (overlay)
-local fovCircle = Instance.new("Frame")
-fovCircle.Name = "AimbotFOV"
-fovCircle.BackgroundTransparency = 1
-fovCircle.BorderSizePixel = 0
-fovCircle.Size = UDim2.fromOffset(fovRadius * 2, fovRadius * 2)
-fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-fovCircle.Visible = showFov
-fovCircle.ZIndex = 999
-local fovCorner = Instance.new("UICorner")
-fovCorner.CornerRadius = UDim.new(1, 0)
-fovCorner.Parent = fovCircle
-local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = C.accent
-fovStroke.Thickness = 2
-fovStroke.Transparency = 0.15
-fovStroke.Parent = fovCircle
-fovCircle.Parent = ScaledHolder
-
-local function updateFovCircle()
-    fovCircle.Size = UDim2.fromOffset(fovRadius * 2, fovRadius * 2)
-    fovCircle.Visible = showFov
-    local mousePos = UserInputService:GetMouseLocation()
-    fovCircle.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
+    espObjects[player] = {highlight = highlight, billboard = billboard, label = labelObj}
 end
 
--- Drag handling for sliders
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        if fovDragging then setFovFromX(input.Position.X) end
-        if healthDragging then setHealthFromX(input.Position.X) end
-        if smoothDragging and smoothSlider.AbsoluteSize.X > 0 then
-            local a = math.clamp((input.Position.X - smoothSlider.AbsolutePosition.X) / smoothSlider.AbsoluteSize.X, 0, 1)
-            aimSmoothness = math.max(0.03, a)
-            smoothValue.Text = "Smoothing: " .. string.format("%.2f", aimSmoothness)
-            smoothFill.Size = UDim2.new(a, 0, 1, 0)
-        end
-        if predictionDragging and predictionSlider.AbsoluteSize.X > 0 then
-            local p = math.clamp((input.Position.X - predictionSlider.AbsolutePosition.X) / predictionSlider.AbsoluteSize.X, 0, 1)
-            predictionAmount = p * 0.5
-            predictionValue.Text = "Prediction: " .. string.format("%.2f", predictionAmount)
-            predictionFill.Size = UDim2.new(p, 0, 1, 0)
+local function refreshPlayerESP(player)
+    if not espEnabledUI then
+        destroyPlayerESP(player)
+        return
+    end
+    if player == Players.LocalPlayer then return end
+    if player.Character and player.Character:FindFirstChild("Head") then
+        createPlayerESP(player)
+    end
+end
+
+local function enablePersistentESP()
+    espEnabledUI = true
+    for _, player in ipairs(Players:GetPlayers()) do
+        refreshPlayerESP(player)
+        if not espConnections[player] then
+            espConnections[player] = player.CharacterAdded:Connect(function(character)
+                character:WaitForChild("Head", 5)
+                task.defer(function()
+                    refreshPlayerESP(player)
+                end)
+            end)
         end
     end
-end)
+end
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        fovDragging = false
-        healthDragging = false
-        smoothDragging = false
-        predictionDragging = false
+local function disablePersistentESP()
+    espEnabledUI = false
+    for player in pairs(espObjects) do
+        destroyPlayerESP(player)
     end
-end)
+end
 
-aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
-aimGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
-end)
-
--- Keep ESP synchronized with players joining and respawning.
 Players.PlayerAdded:Connect(function(player)
     if espEnabledUI then
-        task.delay(1, refreshUIESP)
-        player.CharacterAdded:Connect(function()
-            if espEnabledUI then
-                task.delay(0.5, refreshUIESP)
-            end
+        espConnections[player] = player.CharacterAdded:Connect(function(character)
+            character:WaitForChild("Head", 5)
+            task.defer(function() refreshPlayerESP(player) end)
         end)
+        task.defer(function() refreshPlayerESP(player) end)
     end
 end)
 
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= Players.LocalPlayer then
-        player.CharacterAdded:Connect(function()
-            if espEnabledUI then
-                task.delay(0.5, refreshUIESP)
-            end
-        end)
+Players.PlayerRemoving:Connect(function(player)
+    destroyPlayerESP(player)
+    if espConnections[player] then
+        espConnections[player]:Disconnect()
+        espConnections[player] = nil
     end
-end
+end)
 
-task.spawn(function()
-    while InfinyxUI.Parent do
-        if espEnabledUI then
-            refreshUIESP()
-        end
-        task.wait(2)
+addToggleRow(espCard, 62, "ESP", "Persistent boxes and names for every player.", espEnabledUI, function(v)
+    if v then
+        enablePersistentESP()
+    else
+        disablePersistentESP()
     end
 end)
 
@@ -14548,6 +14408,17 @@ local function isValidTeam(player)
     return player.TeamColor ~= LocalPlayer.TeamColor
 end
 
+local function getTargetPosition(part)
+    local position = part.Position
+    if predictionEnabled and part:IsA("BasePart") then
+        position += part.AssemblyLinearVelocity * predictionAmount
+    end
+    if offsetEnabled then
+        position += Vector3.new(0, 0.15, 0)
+    end
+    return position
+end
+
 local function isVisible(part)
     if not visibilityCheck then return true end
     if not part or not part.Parent then return false end
@@ -14570,17 +14441,6 @@ local function isVisible(part)
     end
 
     return result.Instance:IsDescendantOf(part.Parent)
-end
-
-local function getTargetPosition(part)
-    local position = part.Position
-    if predictionEnabled and part:IsA("BasePart") then
-        position += part.AssemblyLinearVelocity * predictionAmount
-    end
-    if offsetEnabled then
-        position += Vector3.new(0, 0.15, 0)
-    end
-    return position
 end
 
 local function getClosestTarget()
@@ -14655,8 +14515,9 @@ local function aimAt(part)
     end
 end
 
-aimConnection = RunService.RenderStepped:Connect(function()
+local function aimbotStep()
     Camera = workspace.CurrentCamera
+    if not Camera then return end
     updateFovCircle()
 
     if not aimEnabled and not triggerBot and not autoShootEnabled then
@@ -14664,21 +14525,28 @@ aimConnection = RunService.RenderStepped:Connect(function()
     end
 
     local target, player = getClosestTarget()
-    if target and player then
-        if aimEnabled then aimAt(target) end
+    if not target or not player then return end
 
-        if autoShootEnabled then
+    if aimEnabled then
+        aimAt(target)
+    end
+
+    if autoShootEnabled then
+        firePrimary()
+    end
+
+    if triggerBot then
+        local mousePos = UserInputService:GetMouseLocation()
+        local screenPos, onScreen = Camera:WorldToViewportPoint(getTargetPosition(target))
+        if onScreen and (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude <= 10 then
             firePrimary()
         end
-
-        if triggerBot then
-            local mousePos = UserInputService:GetMouseLocation()
-            local screenPos = Camera:WorldToViewportPoint(getTargetPosition(target))
-            if (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude <= 8 then
-                firePrimary()
-            end
-        end
     end
+end
+
+pcall(function()
+    RunService:UnbindFromRenderStep("InfinyxAimbot")
+    RunService:BindToRenderStep("InfinyxAimbot", Enum.RenderPriority.Camera.Value + 1, aimbotStep)
 end)
 
 -- ==========================================
