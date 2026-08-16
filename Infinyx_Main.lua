@@ -13659,6 +13659,10 @@ pcall(function()
     end
 end)
 
+-- Isolate the enhanced UI in its own Luau function scope.
+pcall(function()
+
+
 local InfinyxUI = Instance.new("ScreenGui")
 InfinyxUI.Name = "InfinyxModernUI"
 InfinyxUI.ResetOnSpawn = false
@@ -14403,7 +14407,7 @@ local function updateFovCircle()
     fovCircle.Visible = showFov
     local mousePos = UserInputService:GetMouseLocation()
     fovCircle.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
-    end
+end
 
 -- Drag handling for sliders
 UserInputService.InputChanged:Connect(function(input)
@@ -14744,3 +14748,4 @@ TweenService:Create(root, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.Easin
 }):Play()
 
 print("[Infinyx] Enhanced Aimbot UI loaded • Right Control toggles • Made by Legendtutti")
+end)
