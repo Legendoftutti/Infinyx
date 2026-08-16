@@ -13650,14 +13650,9 @@ task.spawn(function()
     minimizeHolder()
 end)
 
-
 -- ============================================================
--- INFINYX MODERN UI
--- Professional redesign / command browser / RightControl
--- UI-only aim settings are included as placeholders; no
--- targeting or anti-detection logic is implemented here.
+-- INFINYX MODERN UI – FULLY ENHANCED (AIMBOT + ALL FEATURES)
 -- ============================================================
-
 pcall(function()
     if Holder then
         Holder.Visible = false
@@ -13792,7 +13787,7 @@ local title = label(top, "INFINYX", 20, C.text, Enum.Font.GothamBold)
 title.Position = UDim2.fromOffset(22, 10)
 title.Size = UDim2.fromOffset(220, 24)
 
-local subtitle = label(top, "v6.4.2  •  LEGENDTUTTI EDITION", 10, C.muted, Enum.Font.GothamMedium)
+local subtitle = label(top, "v6.4.2  •  AIMBOT EDITION", 10, C.muted, Enum.Font.GothamMedium)
 subtitle.Position = UDim2.fromOffset(23, 34)
 subtitle.Size = UDim2.fromOffset(280, 18)
 
@@ -13876,10 +13871,10 @@ end
 
 createTab("Home", "◆")
 createTab("Commands", "⌘")
-createTab("Combat", "◎")
+createTab("Aimbot", "◎")
 createTab("Settings", "⚙")
 
-local footer = label(sidebar, "MADE BY LEGENDTUTTI", 8, C.muted, Enum.Font.GothamBold)
+local footer = label(sidebar, "MADE BY LEGENDTUTTI  •  GODMODE", 8, C.muted, Enum.Font.GothamBold)
 footer.Position = UDim2.fromOffset(18, 1)
 footer.AnchorPoint = Vector2.new(0, 1)
 footer.Position = UDim2.new(0, 18, 1, -18)
@@ -13887,10 +13882,10 @@ footer.Size = UDim2.new(1, -36, 0, 18)
 
 local home = createPage("Home")
 local commands = createPage("Commands")
-local combat = createPage("Combat")
+local combat = createPage("Aimbot")
 local settings = createPage("Settings")
 
--- Home page
+-- Home page (stats)
 local hero = Instance.new("Frame")
 hero.BackgroundColor3 = C.panel
 hero.BorderSizePixel = 0
@@ -13960,7 +13955,7 @@ statCard("HOTKEY", "RIGHT CTRL", "Open / close the menu")
 statCard("COMMANDS", tostring(#(CMDs or {})), "Available command entries")
 statCard("AUTHOR", "LEGENDTUTTI", "Infinyx UI credit")
 
--- Commands page
+-- Commands page (browser)
 local cmdTitle = label(commands, "Command Center", 23, C.text, Enum.Font.GothamBold)
 cmdTitle.Position = UDim2.fromOffset(22, 18)
 cmdTitle.Size = UDim2.new(1, -44, 0, 32)
@@ -14095,43 +14090,296 @@ end)
 
 rebuildCommands("")
 
--- Combat page: functional aimbot controls.
-local combatTitle = label(combat, "Combat", 23, C.text, Enum.Font.GothamBold)
-combatTitle.Position = UDim2.fromOffset(22, 18)
-combatTitle.Size = UDim2.new(1, -44, 0, 32)
+-- ==========================================
+-- AIMBOT PAGE – FULLY ENHANCED
+-- ==========================================
+local aimbotTitle = label(combat, "Aimbot Engine", 23, C.text, Enum.Font.GothamBold)
+aimbotTitle.Position = UDim2.fromOffset(22, 18)
+aimbotTitle.Size = UDim2.new(1, -44, 0, 32)
 
-local combatSub = label(combat, "Aimbot, FOV and visibility controls.", 11, C.muted)
-combatSub.Position = UDim2.fromOffset(23, 49)
-combatSub.Size = UDim2.new(1, -46, 0, 20)
+local aimbotSub = label(combat, "Precision targeting with visual feedback and automation.", 11, C.muted)
+aimbotSub.Position = UDim2.fromOffset(23, 49)
+aimbotSub.Size = UDim2.new(1, -46, 0, 20)
 
-local aimCard = Instance.new("Frame")
-aimCard.BackgroundColor3 = C.panel
-aimCard.BorderSizePixel = 0
-aimCard.Position = UDim2.fromOffset(22, 84)
-aimCard.Size = UDim2.new(1, -44, 0, 300)
-aimCard.Parent = combat
-corner(aimCard, 10)
-stroke(aimCard, C.stroke, 1, 0.2)
+local aimScroll = Instance.new("ScrollingFrame")
+aimScroll.Name = "AimbotSettings"
+aimScroll.BackgroundTransparency = 1
+aimScroll.BorderSizePixel = 0
+aimScroll.Position = UDim2.fromOffset(22, 82)
+aimScroll.Size = UDim2.new(1, -44, 1, -96)
+aimScroll.CanvasSize = UDim2.fromOffset(0, 0)
+aimScroll.ScrollBarThickness = 5
+aimScroll.ScrollBarImageColor3 = C.stroke
+aimScroll.Parent = combat
 
-local aimName = label(aimCard, "Aimbot", 15, C.text, Enum.Font.GothamBold)
-aimName.Position = UDim2.fromOffset(18, 16)
-aimName.Size = UDim2.fromOffset(180, 24)
+local aimContent = Instance.new("Frame")
+aimContent.BackgroundTransparency = 1
+aimContent.Size = UDim2.new(1, -8, 0, 750)
+aimContent.Parent = aimScroll
 
-local aimState = label(aimCard, "READY", 9, C.muted, Enum.Font.GothamBold)
-aimState.Position = UDim2.fromOffset(18, 40)
-aimState.Size = UDim2.fromOffset(220, 18)
+local aimGrid = Instance.new("UIGridLayout")
+aimGrid.CellPadding = UDim2.fromOffset(12, 12)
+aimGrid.CellSize = UDim2.new(0.5, -6, 0, 220)
+aimGrid.Parent = aimContent
 
-local aimToggle = button(aimCard, "OFF", 10)
-aimToggle.Position = UDim2.new(1, -88, 0, 18)
-aimToggle.Size = UDim2.fromOffset(64, 30)
-
+-- Aimbot state variables
 local aimEnabled = false
+local autoShootEnabled = false
+local stickyAim = true
 local showFov = true
 local visibilityCheck = true
+local teamCheck = true
+local knockCheck = true
+local healthCheck = true
+local triggerBot = false
+local silentAim = false
+local espEnabledUI = false
+local predictionEnabled = true
+local predictionAmount = 0.12
+local offsetEnabled = false
+local aimMethod = "Camera"
+local hitboxMode = "Head"
+local minHealth = 1
 local fovRadius = 150
 local aimSmoothness = 0.35
+local currentTarget = nil
+local lastShot = 0
 
--- FOV circle is drawn on-screen and follows the mouse/cursor.
+local function makeCard(parent, titleText, subtitleText)
+    local card = Instance.new("Frame")
+    card.BackgroundColor3 = C.panel
+    card.BorderSizePixel = 0
+    card.Parent = parent
+    corner(card, 10)
+    stroke(card, C.stroke, 1, 0.2)
+
+    local t = label(card, titleText, 14, C.text, Enum.Font.GothamBold)
+    t.Position = UDim2.fromOffset(16, 13)
+    t.Size = UDim2.new(1, -32, 0, 22)
+
+    local s = label(card, subtitleText, 9, C.muted)
+    s.Position = UDim2.fromOffset(16, 36)
+    s.Size = UDim2.new(1, -32, 0, 18)
+    return card
+end
+
+local function setToggleVisual(b, enabled)
+    b.Text = enabled and "ON" or "OFF"
+    b.BackgroundColor3 = enabled and C.accent or C.panel3
+end
+
+local function addToggleRow(card, y, name, desc, initial, callback)
+    local n = label(card, name, 11, C.text, Enum.Font.GothamMedium)
+    n.Position = UDim2.fromOffset(16, y)
+    n.Size = UDim2.new(1, -100, 0, 18)
+
+    local d = label(card, desc, 8, C.muted)
+    d.Position = UDim2.fromOffset(16, y + 17)
+    d.Size = UDim2.new(1, -100, 0, 15)
+
+    local t = button(card, initial and "ON" or "OFF", 9)
+    t.AnchorPoint = Vector2.new(1, 0)
+    t.Position = UDim2.new(1, -16, 0, y + 3)
+    t.Size = UDim2.fromOffset(60, 26)
+    setToggleVisual(t, initial)
+    t.MouseButton1Click:Connect(function()
+        initial = not initial
+        setToggleVisual(t, initial)
+        callback(initial)
+    end)
+    return t
+end
+
+local function cycleButton(card, y, name, value, values, callback)
+    local n = label(card, name, 11, C.text, Enum.Font.GothamMedium)
+    n.Position = UDim2.fromOffset(16, y)
+    n.Size = UDim2.new(1, -140, 0, 22)
+
+    local b = button(card, value, 9)
+    b.AnchorPoint = Vector2.new(1, 0)
+    b.Position = UDim2.new(1, -16, 0, y)
+    b.Size = UDim2.fromOffset(112, 26)
+
+    b.MouseButton1Click:Connect(function()
+        local index = table.find(values, value) or 1
+        index = index % #values + 1
+        value = values[index]
+        b.Text = value
+        callback(value)
+    end)
+    return b
+end
+
+-- Build UI cards
+local coreCard = makeCard(aimContent, "Targeting", "Core aim behavior and acquisition rules.")
+local aimToggle = addToggleRow(coreCard, 62, "Aimbot", "Enable camera targeting.", false, function(v)
+    aimEnabled = v
+    if not v then currentTarget = nil end
+    status.Text = v and "AIM ACTIVE" or "READY"
+end)
+addToggleRow(coreCard, 101, "Sticky Aim", "Keep the same target until it becomes invalid.", stickyAim, function(v) stickyAim = v end)
+addToggleRow(coreCard, 140, "Visible Only", "Ignore targets blocked by world geometry.", visibilityCheck, function(v) visibilityCheck = v end)
+addToggleRow(coreCard, 179, "Team Check", "Ignore players on your team.", teamCheck, function(v) teamCheck = v end)
+
+local aimCard = makeCard(aimContent, "Aim Profile", "Fine tune how targets are selected.")
+cycleButton(aimCard, 62, "Hitbox", hitboxMode, {"Head", "UpperTorso", "HumanoidRootPart", "Nearest"}, function(v) hitboxMode = v end)
+cycleButton(aimCard, 101, "Aim Method", aimMethod, {"Camera", "Cursor"}, function(v) aimMethod = v end)
+addToggleRow(aimCard, 140, "Prediction", "Lead moving targets using velocity.", predictionEnabled, function(v) predictionEnabled = v end)
+addToggleRow(aimCard, 179, "Offset", "Apply a small configurable aim offset.", offsetEnabled, function(v) offsetEnabled = v end)
+
+local automationCard = makeCard(aimContent, "Automation", "Optional fire assistance.")
+addToggleRow(automationCard, 62, "Auto Shoot", "Fire when a valid aim target is acquired.", autoShootEnabled, function(v)
+    autoShootEnabled = v
+end)
+addToggleRow(automationCard, 101, "Trigger Bot", "Fire when the cursor is directly over a valid target.", triggerBot, function(v) triggerBot = v end)
+addToggleRow(automationCard, 140, "Silent Aim", "Adapter-ready toggle; weapon-specific remotes are required.", silentAim, function(v) silentAim = v end)
+local autoNote = label(automationCard, "Auto Shoot uses mouse1click / VirtualInputManager.", 8, C.muted)
+autoNote.Position = UDim2.fromOffset(16, 179)
+autoNote.Size = UDim2.new(1, -32, 0, 16)
+
+local espCard = makeCard(aimContent, "ESP", "Visual target awareness inside the Aimbot page.")
+addToggleRow(espCard, 62, "ESP", "Show player boxes and names.", espEnabledUI, function(v)
+    espEnabledUI = v
+    if v then
+        execCmd("esp")
+    else
+        execCmd("noesp")
+    end
+end)
+addToggleRow(espCard, 101, "ESP Team Logic", "Use existing team-aware ESP coloring.", true, function(v) end)
+local espInfo = label(espCard, "Reuses Infinyx's built‑in ESP system.", 8, C.muted)
+espInfo.Position = UDim2.fromOffset(16, 140)
+espInfo.Size = UDim2.new(1, -32, 0, 18)
+
+local safetyCard = makeCard(aimContent, "Filters", "Prevent low-value or invalid targets.")
+addToggleRow(safetyCard, 62, "Knock Check", "Skip knocked / KO / platform-stunned targets.", knockCheck, function(v) knockCheck = v end)
+addToggleRow(safetyCard, 101, "Health Check", "Require the target to be above minimum health.", healthCheck, function(v) healthCheck = v end)
+
+local healthValue = label(safetyCard, "Minimum Health: " .. tostring(minHealth), 9, C.accent2, Enum.Font.GothamBold)
+healthValue.Position = UDim2.fromOffset(16, 140)
+healthValue.Size = UDim2.new(1, -32, 0, 18)
+local healthSlider = Instance.new("Frame")
+healthSlider.BackgroundColor3 = C.panel3
+healthSlider.BorderSizePixel = 0
+healthSlider.Position = UDim2.fromOffset(16, 165)
+healthSlider.Size = UDim2.new(1, -32, 0, 7)
+healthSlider.Parent = safetyCard
+corner(healthSlider, 99)
+local healthFill = Instance.new("Frame")
+healthFill.BackgroundColor3 = C.accent
+healthFill.BorderSizePixel = 0
+healthFill.Size = UDim2.new(0, 0, 1, 0)
+healthFill.Parent = healthSlider
+corner(healthFill, 99)
+local healthDragging = false
+local function setHealthFromX(x)
+    local a = math.clamp((x - healthSlider.AbsolutePosition.X) / healthSlider.AbsoluteSize.X, 0, 1)
+    minHealth = math.floor(1 + a * 99 + 0.5)
+    healthValue.Text = "Minimum Health: " .. tostring(minHealth)
+    healthFill.Size = UDim2.new(a, 0, 1, 0)
+end
+healthSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        healthDragging = true
+        setHealthFromX(input.Position.X)
+    end
+end)
+
+local visualCard = makeCard(aimContent, "Visuals", "On-screen targeting feedback.")
+addToggleRow(visualCard, 62, "Draw FOV", "Display the active targeting radius.", showFov, function(v)
+    showFov = v
+    updateFovCircle()
+end)
+local fovValue = label(visualCard, "FOV: " .. tostring(fovRadius) .. " px", 9, C.accent2, Enum.Font.GothamBold)
+fovValue.Position = UDim2.fromOffset(16, 102)
+fovValue.Size = UDim2.new(1, -32, 0, 18)
+local fovSlider = Instance.new("Frame")
+fovSlider.BackgroundColor3 = C.panel3
+fovSlider.BorderSizePixel = 0
+fovSlider.Position = UDim2.fromOffset(16, 128)
+fovSlider.Size = UDim2.new(1, -32, 0, 7)
+fovSlider.Parent = visualCard
+corner(fovSlider, 99)
+local fovFill = Instance.new("Frame")
+fovFill.BackgroundColor3 = C.accent
+fovFill.BorderSizePixel = 0
+fovFill.Size = UDim2.new((fovRadius - 50) / 450, 0, 1, 0)
+fovFill.Parent = fovSlider
+corner(fovFill, 99)
+local fovDragging = false
+local function setFovFromX(x)
+    local a = math.clamp((x - fovSlider.AbsolutePosition.X) / fovSlider.AbsoluteSize.X, 0, 1)
+    fovRadius = math.floor(50 + a * 450 + 0.5)
+    fovValue.Text = "FOV: " .. tostring(fovRadius) .. " px"
+    fovFill.Size = UDim2.new(a, 0, 1, 0)
+    updateFovCircle()
+end
+fovSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        fovDragging = true
+        setFovFromX(input.Position.X)
+    end
+end)
+
+local tuningCard = makeCard(aimContent, "Smoothing & Prediction", "Adjust responsiveness and movement lead.")
+local smoothValue = label(tuningCard, "Smoothing: " .. string.format("%.2f", aimSmoothness), 9, C.accent2, Enum.Font.GothamBold)
+smoothValue.Position = UDim2.fromOffset(16, 62)
+smoothValue.Size = UDim2.new(1, -32, 0, 18)
+local smoothSlider = Instance.new("Frame")
+smoothSlider.BackgroundColor3 = C.panel3
+smoothSlider.BorderSizePixel = 0
+smoothSlider.Position = UDim2.fromOffset(16, 88)
+smoothSlider.Size = UDim2.new(1, -32, 0, 7)
+smoothSlider.Parent = tuningCard
+corner(smoothSlider, 99)
+local smoothFill = Instance.new("Frame")
+smoothFill.BackgroundColor3 = C.accent
+smoothFill.BorderSizePixel = 0
+smoothFill.Size = UDim2.new(aimSmoothness, 0, 1, 0)
+smoothFill.Parent = smoothSlider
+corner(smoothFill, 99)
+
+local predictionValue = label(tuningCard, "Prediction: " .. string.format("%.2f", predictionAmount), 9, C.accent2, Enum.Font.GothamBold)
+predictionValue.Position = UDim2.fromOffset(16, 116)
+predictionValue.Size = UDim2.new(1, -32, 0, 18)
+local predictionSlider = Instance.new("Frame")
+predictionSlider.BackgroundColor3 = C.panel3
+predictionSlider.BorderSizePixel = 0
+predictionSlider.Position = UDim2.fromOffset(16, 142)
+predictionSlider.Size = UDim2.new(1, -32, 0, 7)
+predictionSlider.Parent = tuningCard
+corner(predictionSlider, 99)
+local predictionFill = Instance.new("Frame")
+predictionFill.BackgroundColor3 = C.accent
+predictionFill.BorderSizePixel = 0
+predictionFill.Size = UDim2.new(predictionAmount / 0.5, 0, 1, 0)
+predictionFill.Parent = predictionSlider
+corner(predictionFill, 99)
+
+local smoothDragging = false
+local predictionDragging = false
+
+smoothSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        smoothDragging = true
+        local a = math.clamp((input.Position.X - smoothSlider.AbsolutePosition.X) / smoothSlider.AbsoluteSize.X, 0, 1)
+        aimSmoothness = math.max(0.03, a)
+        smoothValue.Text = "Smoothing: " .. string.format("%.2f", aimSmoothness)
+        smoothFill.Size = UDim2.new(a, 0, 1, 0)
+    end
+end)
+
+predictionSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        predictionDragging = true
+        local p = math.clamp((input.Position.X - predictionSlider.AbsolutePosition.X) / predictionSlider.AbsoluteSize.X, 0, 1)
+        predictionAmount = p * 0.5
+        predictionValue.Text = "Prediction: " .. string.format("%.2f", predictionAmount)
+        predictionFill.Size = UDim2.new(p, 0, 1, 0)
+    end
+end)
+
+-- FOV Circle (overlay)
 local fovCircle = Instance.new("Frame")
 fovCircle.Name = "AimbotFOV"
 fovCircle.BackgroundTransparency = 1
@@ -14140,18 +14388,14 @@ fovCircle.Size = UDim2.fromOffset(fovRadius * 2, fovRadius * 2)
 fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
 fovCircle.Visible = showFov
 fovCircle.ZIndex = 999
-
 local fovCorner = Instance.new("UICorner")
 fovCorner.CornerRadius = UDim.new(1, 0)
 fovCorner.Parent = fovCircle
-
 local fovStroke = Instance.new("UIStroke")
 fovStroke.Color = C.accent
 fovStroke.Thickness = 2
 fovStroke.Transparency = 0.15
 fovStroke.Parent = fovCircle
-
--- Put the circle in the same GUI layer as the main UI when possible.
 fovCircle.Parent = ScaledHolder
 
 local function updateFovCircle()
@@ -14161,208 +14405,220 @@ local function updateFovCircle()
     fovCircle.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
 end
 
-local function setAimButton()
-    aimToggle.Text = aimEnabled and "ON" or "OFF"
-    aimToggle.BackgroundColor3 = aimEnabled and C.accent or C.panel3
-    aimState.Text = aimEnabled and "AIMBOT ACTIVE" or "AIMBOT OFF"
-end
-
-aimToggle.MouseButton1Click:Connect(function()
-    aimEnabled = not aimEnabled
-    setAimButton()
-end)
-
--- FOV visibility toggle.
-local fovVisName = label(aimCard, "Show FOV", 13, C.text, Enum.Font.GothamMedium)
-fovVisName.Position = UDim2.fromOffset(18, 76)
-fovVisName.Size = UDim2.fromOffset(180, 24)
-
-local fovVisToggle = button(aimCard, showFov and "ON" or "OFF", 9)
-fovVisToggle.Position = UDim2.new(1, -88, 0, 72)
-fovVisToggle.Size = UDim2.fromOffset(64, 26)
-fovVisToggle.BackgroundColor3 = showFov and C.accent or C.panel3
-
-fovVisToggle.MouseButton1Click:Connect(function()
-    showFov = not showFov
-    fovVisToggle.Text = showFov and "ON" or "OFF"
-    fovVisToggle.BackgroundColor3 = showFov and C.accent or C.panel3
-    fovCircle.Visible = showFov
-end)
-
--- Visibility check toggle.
-local visName = label(aimCard, "Visibility Check", 13, C.text, Enum.Font.GothamMedium)
-visName.Position = UDim2.fromOffset(18, 112)
-visName.Size = UDim2.fromOffset(180, 24)
-
-local visToggle = button(aimCard, visibilityCheck and "ON" or "OFF", 9)
-visToggle.Position = UDim2.new(1, -88, 0, 108)
-visToggle.Size = UDim2.fromOffset(64, 26)
-visToggle.BackgroundColor3 = visibilityCheck and C.accent or C.panel3
-
-visToggle.MouseButton1Click:Connect(function()
-    visibilityCheck = not visibilityCheck
-    visToggle.Text = visibilityCheck and "ON" or "OFF"
-    visToggle.BackgroundColor3 = visibilityCheck and C.accent or C.panel3
-end)
-
--- FOV size.
-local fovName = label(aimCard, "FOV Size", 13, C.text, Enum.Font.GothamMedium)
-fovName.Position = UDim2.fromOffset(18, 150)
-fovName.Size = UDim2.fromOffset(180, 24)
-
-local fovValue = label(aimCard, tostring(fovRadius) .. " px", 12, C.accent2, Enum.Font.GothamBold)
-fovValue.AnchorPoint = Vector2.new(1, 0)
-fovValue.Position = UDim2.new(1, -18, 0, 150)
-fovValue.Size = UDim2.fromOffset(80, 24)
-fovValue.TextXAlignment = Enum.TextXAlignment.Right
-
-local slider = Instance.new("Frame")
-slider.BackgroundColor3 = C.panel3
-slider.BorderSizePixel = 0
-slider.Position = UDim2.fromOffset(18, 186)
-slider.Size = UDim2.new(1, -36, 0, 8)
-slider.Parent = aimCard
-corner(slider, 99)
-
-local fill = Instance.new("Frame")
-fill.BackgroundColor3 = C.accent
-fill.BorderSizePixel = 0
-fill.Size = UDim2.new((fovRadius - 50) / 450, 0, 1, 0)
-fill.Parent = slider
-corner(fill, 99)
-
-local knob = Instance.new("Frame")
-knob.BackgroundColor3 = C.text
-knob.BorderSizePixel = 0
-knob.AnchorPoint = Vector2.new(0.5, 0.5)
-knob.Position = UDim2.new((fovRadius - 50) / 450, 0, 0.5, 0)
-knob.Size = UDim2.fromOffset(14, 14)
-knob.Parent = slider
-corner(knob, 99)
-
-local draggingFov = false
-local function setFovFromX(x)
-    local alpha = math.clamp((x - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
-    fovRadius = math.floor(50 + alpha * 450 + 0.5)
-    fovValue.Text = tostring(fovRadius) .. " px"
-    fill.Size = UDim2.new(alpha, 0, 1, 0)
-    knob.Position = UDim2.new(alpha, 0, 0.5, 0)
-    updateFovCircle()
-end
-
-slider.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        draggingFov = true
-        setFovFromX(input.Position.X)
-    end
-end)
-
+-- Drag handling for sliders
 UserInputService.InputChanged:Connect(function(input)
-    if draggingFov and input.UserInputType == Enum.UserInputType.MouseMovement then
-        setFovFromX(input.Position.X)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if fovDragging then setFovFromX(input.Position.X) end
+        if healthDragging then setHealthFromX(input.Position.X) end
+        if smoothDragging and smoothSlider.AbsoluteSize.X > 0 then
+            local a = math.clamp((input.Position.X - smoothSlider.AbsolutePosition.X) / smoothSlider.AbsoluteSize.X, 0, 1)
+            aimSmoothness = math.max(0.03, a)
+            smoothValue.Text = "Smoothing: " .. string.format("%.2f", aimSmoothness)
+            smoothFill.Size = UDim2.new(a, 0, 1, 0)
+        end
+        if predictionDragging and predictionSlider.AbsoluteSize.X > 0 then
+            local p = math.clamp((input.Position.X - predictionSlider.AbsolutePosition.X) / predictionSlider.AbsoluteSize.X, 0, 1)
+            predictionAmount = p * 0.5
+            predictionValue.Text = "Prediction: " .. string.format("%.2f", predictionAmount)
+            predictionFill.Size = UDim2.new(p, 0, 1, 0)
+        end
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        draggingFov = false
+        fovDragging = false
+        healthDragging = false
+        smoothDragging = false
+        predictionDragging = false
     end
 end)
 
--- ==========================
--- Actual aimbot logic
--- ==========================
+aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
+aimGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
+end)
+
+-- ==========================================
+-- AIMBOT ENGINE (fully functional)
+-- ==========================================
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local aimConnection
 
 local function getAimPart(character)
-    return character and (
-        character:FindFirstChild("Head")
-        or character:FindFirstChild("UpperTorso")
-        or character:FindFirstChild("HumanoidRootPart")
-    )
+    if not character then return nil end
+    if hitboxMode == "Nearest" then
+        local best, bestDist = nil, math.huge
+        local cursor = UserInputService:GetMouseLocation()
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen and pos.Z > 0 then
+                    local d = (Vector2.new(pos.X, pos.Y) - cursor).Magnitude
+                    if d < bestDist then best, bestDist = part, d end
+                end
+            end
+        end
+        return best
+    end
+    return character:FindFirstChild(hitboxMode) or character:FindFirstChild("Head") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart")
+end
+
+local function isKnocked(player)
+    if not knockCheck then return false end
+    local character = player and player.Character
+    if not character then return true end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.PlatformStand then return true end
+    for _, name in ipairs({"Knocked", "KO", "Downed", "IsKnocked"}) do
+        local value = character:FindFirstChild(name, true)
+        if value and value:IsA("BoolValue") and value.Value then return true end
+    end
+    return false
 end
 
 local function isAlive(player)
     local character = player and player.Character
     local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    return character and humanoid and humanoid.Health > 0
+    if not character or not humanoid or humanoid.Health <= 0 then return false end
+    if healthCheck and humanoid.Health < minHealth then return false end
+    if isKnocked(player) then return false end
+    return true
+end
+
+local function isValidTeam(player)
+    if not teamCheck then return true end
+    if LocalPlayer.Team ~= nil and player.Team ~= nil then
+        return player.Team ~= LocalPlayer.Team
+    end
+    return player.TeamColor ~= LocalPlayer.TeamColor
 end
 
 local function isVisible(part)
-    if not visibilityCheck then
-        return true
-    end
-
+    if not visibilityCheck then return true end
     local origin = Camera.CFrame.Position
     local direction = part.Position - origin
-
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {
-        LocalPlayer.Character,
-        Camera
-    }
+    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
     params.IgnoreWater = true
-
     local result = workspace:Raycast(origin, direction, params)
     return result == nil or result.Instance:IsDescendantOf(part.Parent)
 end
 
+local function getTargetPosition(part)
+    local position = part.Position
+    if predictionEnabled and part:IsA("BasePart") then
+        position += part.AssemblyLinearVelocity * predictionAmount
+    end
+    if offsetEnabled then
+        position += Vector3.new(0, 0.15, 0)
+    end
+    return position
+end
+
 local function getClosestTarget()
     local mousePos = UserInputService:GetMouseLocation()
-    local bestPart = nil
-    local bestDistance = fovRadius
+    local bestPart, bestDistance, bestPlayer = nil, fovRadius, nil
+
+    if stickyAim and currentTarget and currentTarget.Parent then
+        local player = Players:GetPlayerFromCharacter(currentTarget.Parent)
+        if player and player ~= LocalPlayer and isAlive(player) and isValidTeam(player) then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(getTargetPosition(currentTarget))
+            if onScreen and screenPos.Z > 0 and isVisible(currentTarget) then
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                if distance <= fovRadius then
+                    return currentTarget, player
+                end
+            end
+        end
+        currentTarget = nil
+    end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and isAlive(player) then
+        if player ~= LocalPlayer and isAlive(player) and isValidTeam(player) then
             local part = getAimPart(player.Character)
             if part then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-
+                local pos = getTargetPosition(part)
+                local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
                 if onScreen and screenPos.Z > 0 then
                     local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-
                     if distance <= bestDistance and isVisible(part) then
-                        bestDistance = distance
-                        bestPart = part
+                        bestDistance, bestPart, bestPlayer = distance, part, player
                     end
                 end
             end
         end
     end
+    currentTarget = bestPart
+    return bestPart, bestPlayer
+end
 
-    return bestPart
+local function firePrimary()
+    local now = os.clock()
+    if now - lastShot < 0.08 then return end
+    lastShot = now
+    if type(mouse1click) == "function" then
+        pcall(mouse1click)
+        return
+    end
+    local vim = game:GetService("VirtualInputManager")
+    if vim then
+        pcall(function()
+            vim:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            vim:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        end)
+    else
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+        if tool then
+            pcall(tool.Activate, tool)
+        end
+    end
 end
 
 local function aimAt(part)
-    if not part or not part.Parent then
-        return
-    end
-
+    if not part or not part.Parent then return end
+    local desiredPosition = getTargetPosition(part)
     local cameraPosition = Camera.CFrame.Position
-    local desired = CFrame.lookAt(cameraPosition, part.Position)
-
-    -- Smooth camera movement so the aim does not snap instantly.
-    Camera.CFrame = Camera.CFrame:Lerp(desired, math.clamp(aimSmoothness, 0.01, 1))
+    local desired = CFrame.lookAt(cameraPosition, desiredPosition)
+    local alpha = math.clamp(aimSmoothness, 0.01, 1)
+    if aimMethod == "Camera" then
+        Camera.CFrame = Camera.CFrame:Lerp(desired, alpha)
+    else
+        Camera.CFrame = desired
+    end
 end
 
 aimConnection = RunService.RenderStepped:Connect(function()
     Camera = workspace.CurrentCamera
     updateFovCircle()
 
-    if not aimEnabled then
+    if not aimEnabled and not triggerBot and not autoShootEnabled then
         return
     end
 
-    local target = getClosestTarget()
-    if target then
-        aimAt(target)
+    local target, player = getClosestTarget()
+    if target and player then
+        if aimEnabled then aimAt(target) end
+
+        if autoShootEnabled then
+            firePrimary()
+        end
+
+        if triggerBot then
+            local mousePos = UserInputService:GetMouseLocation()
+            local screenPos = Camera:WorldToViewportPoint(getTargetPosition(target))
+            if (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude <= 8 then
+                firePrimary()
+            end
+        end
     end
 end)
 
--- Settings page
+-- ==========================================
+-- SETTINGS PAGE
+-- ==========================================
 local settingsTitle = label(settings, "Settings", 23, C.text, Enum.Font.GothamBold)
 settingsTitle.Position = UDim2.fromOffset(22, 18)
 settingsTitle.Size = UDim2.new(1, -44, 0, 32)
@@ -14413,7 +14669,7 @@ addSetting(14, "Interface animations", "Use smooth transitions when switching pa
 addSetting(72, "Command descriptions", "Show extra information in the command browser.", true)
 addSetting(130, "Compact mode", "Use tighter spacing for smaller screens.", false)
 
-local credit = label(settings, "Infinyx  •  Made by Legendtutti", 10, C.muted, Enum.Font.GothamBold)
+local credit = label(settings, "Infinyx  •  Made by Legendtutti  •  Godmode", 10, C.muted, Enum.Font.GothamBold)
 credit.Position = UDim2.fromOffset(16, 202)
 credit.Size = UDim2.new(1, -32, 0, 22)
 
@@ -14425,7 +14681,6 @@ for name, tab in pairs(tabs) do
     animateButton(tab)
 end
 
--- Restore selected tab styling after hover.
 switchTab("Home")
 
 -- Draggable window
@@ -14457,7 +14712,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Right Control toggles the redesigned window.
+-- Right Control toggle
 local rightControlToggle = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl then
@@ -14469,12 +14724,14 @@ close.MouseButton1Click:Connect(function()
     root.Visible = false
 end)
 
+-- Cleanup
 task.spawn(function()
     while InfinyxUI.Parent do
         task.wait(1)
     end
     pcall(function()
         rightControlToggle:Disconnect()
+        aimConnection:Disconnect()
     end)
 end)
 
@@ -14486,4 +14743,4 @@ TweenService:Create(root, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.Easin
     BackgroundTransparency = 0,
 }):Play()
 
-print("[Infinyx] Modern UI loaded • Right Control toggles the menu • Made by Legendtutti")
+print("[Infinyx] Enhanced Aimbot UI loaded • Right Control toggles • Made by Legendtutti")
