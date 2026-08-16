@@ -13660,7 +13660,7 @@ pcall(function()
 end)
 
 -- Isolate the enhanced UI in its own Luau function scope.
-pcall(function()
+local function buildModernUI()
 
 
 local InfinyxUI = Instance.new("ScreenGui")
@@ -14242,6 +14242,24 @@ autoNote.Position = UDim2.fromOffset(16, 179)
 autoNote.Size = UDim2.new(1, -32, 0, 16)
 
 local espCard = makeCard(aimContent, "ESP", "Visual target awareness inside the Aimbot page.")
+local espRefreshRunning = false
+
+local function refreshUIESP()
+    if not espEnabledUI then return end
+    if espRefreshRunning then return end
+
+    espRefreshRunning = true
+    task.spawn(function()
+        -- Rebuild the player ESP so players who joined/respawned are always covered.
+        pcall(function()
+            execCmd("noesp")
+            task.wait()
+            execCmd("esp")
+        end)
+        espRefreshRunning = false
+    end)
+end
+
 addToggleRow(espCard, 62, "ESP", "Show player boxes and names.", espEnabledUI, function(v)
     espEnabledUI = v
     if v then
@@ -14443,6 +14461,37 @@ aimGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
 end)
 
+-- Keep ESP synchronized with players joining and respawning.
+Players.PlayerAdded:Connect(function(player)
+    if espEnabledUI then
+        task.delay(1, refreshUIESP)
+        player.CharacterAdded:Connect(function()
+            if espEnabledUI then
+                task.delay(0.5, refreshUIESP)
+            end
+        end)
+    end
+end)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= Players.LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            if espEnabledUI then
+                task.delay(0.5, refreshUIESP)
+            end
+        end)
+    end
+end
+
+task.spawn(function()
+    while InfinyxUI.Parent do
+        if espEnabledUI then
+            refreshUIESP()
+        end
+        task.wait(2)
+    end
+end)
+
 -- ==========================================
 -- AIMBOT ENGINE (fully functional)
 -- ==========================================
@@ -14501,14 +14550,26 @@ end
 
 local function isVisible(part)
     if not visibilityCheck then return true end
+    if not part or not part.Parent then return false end
+
     local origin = Camera.CFrame.Position
-    local direction = part.Position - origin
+    local targetPosition = getTargetPosition(part)
+    local direction = targetPosition - origin
+
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    params.FilterDescendantsInstances = {
+        LocalPlayer.Character,
+        Camera
+    }
     params.IgnoreWater = true
+
     local result = workspace:Raycast(origin, direction, params)
-    return result == nil or result.Instance:IsDescendantOf(part.Parent)
+    if not result then
+        return true
+    end
+
+    return result.Instance:IsDescendantOf(part.Parent)
 end
 
 local function getTargetPosition(part)
@@ -14748,4 +14809,6 @@ TweenService:Create(root, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.Easin
 }):Play()
 
 print("[Infinyx] Enhanced Aimbot UI loaded • Right Control toggles • Made by Legendtutti")
-end)
+end
+
+buildModernUI()
