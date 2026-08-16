@@ -13986,12 +13986,12 @@ end)
 
 rebuildCommands("")
 
--- Combat page: professional UI controls only.
+-- Combat page: functional aimbot controls.
 local combatTitle = label(combat, "Combat", 23, C.text, Enum.Font.GothamBold)
 combatTitle.Position = UDim2.fromOffset(22, 18)
 combatTitle.Size = UDim2.new(1, -44, 0, 32)
 
-local combatSub = label(combat, "Aim settings panel — UI controls only.", 11, C.muted)
+local combatSub = label(combat, "Aimbot, FOV and visibility controls.", 11, C.muted)
 combatSub.Position = UDim2.fromOffset(23, 49)
 combatSub.Size = UDim2.new(1, -46, 0, 20)
 
@@ -13999,7 +13999,7 @@ local aimCard = Instance.new("Frame")
 aimCard.BackgroundColor3 = C.panel
 aimCard.BorderSizePixel = 0
 aimCard.Position = UDim2.fromOffset(22, 84)
-aimCard.Size = UDim2.new(1, -44, 0, 220)
+aimCard.Size = UDim2.new(1, -44, 0, 300)
 aimCard.Parent = combat
 corner(aimCard, 10)
 stroke(aimCard, C.stroke, 1, 0.2)
@@ -14008,36 +14008,109 @@ local aimName = label(aimCard, "Aimbot", 15, C.text, Enum.Font.GothamBold)
 aimName.Position = UDim2.fromOffset(18, 16)
 aimName.Size = UDim2.fromOffset(180, 24)
 
-local aimState = label(aimCard, "UI PLACEHOLDER", 9, C.muted, Enum.Font.GothamBold)
+local aimState = label(aimCard, "READY", 9, C.muted, Enum.Font.GothamBold)
 aimState.Position = UDim2.fromOffset(18, 40)
-aimState.Size = UDim2.fromOffset(180, 18)
+aimState.Size = UDim2.fromOffset(220, 18)
 
 local aimToggle = button(aimCard, "OFF", 10)
 aimToggle.Position = UDim2.new(1, -88, 0, 18)
 aimToggle.Size = UDim2.fromOffset(64, 30)
 
 local aimEnabled = false
-aimToggle.MouseButton1Click:Connect(function()
-    aimEnabled = not aimEnabled
+local showFov = true
+local visibilityCheck = true
+local fovRadius = 150
+local aimSmoothness = 0.35
+
+-- FOV circle is drawn on-screen and follows the mouse/cursor.
+local fovCircle = Instance.new("Frame")
+fovCircle.Name = "AimbotFOV"
+fovCircle.BackgroundTransparency = 1
+fovCircle.BorderSizePixel = 0
+fovCircle.Size = UDim2.fromOffset(fovRadius * 2, fovRadius * 2)
+fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+fovCircle.Visible = showFov
+fovCircle.ZIndex = 999
+
+local fovCorner = Instance.new("UICorner")
+fovCorner.CornerRadius = UDim.new(1, 0)
+fovCorner.Parent = fovCircle
+
+local fovStroke = Instance.new("UIStroke")
+fovStroke.Color = C.accent
+fovStroke.Thickness = 2
+fovStroke.Transparency = 0.15
+fovStroke.Parent = fovCircle
+
+-- Put the circle in the same GUI layer as the main UI when possible.
+fovCircle.Parent = ScaledHolder
+
+local function updateFovCircle()
+    fovCircle.Size = UDim2.fromOffset(fovRadius * 2, fovRadius * 2)
+    fovCircle.Visible = showFov
+    local mousePos = UserInputService:GetMouseLocation()
+    fovCircle.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
+end
+
+local function setAimButton()
     aimToggle.Text = aimEnabled and "ON" or "OFF"
     aimToggle.BackgroundColor3 = aimEnabled and C.accent or C.panel3
-    aimState.Text = aimEnabled and "SELECTED IN UI" or "UI PLACEHOLDER"
+    aimState.Text = aimEnabled and "AIMBOT ACTIVE" or "AIMBOT OFF"
+end
+
+aimToggle.MouseButton1Click:Connect(function()
+    aimEnabled = not aimEnabled
+    setAimButton()
 end)
 
-local fovName = label(aimCard, "Aimbot FOV", 13, C.text, Enum.Font.GothamMedium)
-fovName.Position = UDim2.fromOffset(18, 88)
+-- FOV visibility toggle.
+local fovVisName = label(aimCard, "Show FOV", 13, C.text, Enum.Font.GothamMedium)
+fovVisName.Position = UDim2.fromOffset(18, 76)
+fovVisName.Size = UDim2.fromOffset(180, 24)
+
+local fovVisToggle = button(aimCard, showFov and "ON" or "OFF", 9)
+fovVisToggle.Position = UDim2.new(1, -88, 0, 72)
+fovVisToggle.Size = UDim2.fromOffset(64, 26)
+fovVisToggle.BackgroundColor3 = showFov and C.accent or C.panel3
+
+fovVisToggle.MouseButton1Click:Connect(function()
+    showFov = not showFov
+    fovVisToggle.Text = showFov and "ON" or "OFF"
+    fovVisToggle.BackgroundColor3 = showFov and C.accent or C.panel3
+    fovCircle.Visible = showFov
+end)
+
+-- Visibility check toggle.
+local visName = label(aimCard, "Visibility Check", 13, C.text, Enum.Font.GothamMedium)
+visName.Position = UDim2.fromOffset(18, 112)
+visName.Size = UDim2.fromOffset(180, 24)
+
+local visToggle = button(aimCard, visibilityCheck and "ON" or "OFF", 9)
+visToggle.Position = UDim2.new(1, -88, 0, 108)
+visToggle.Size = UDim2.fromOffset(64, 26)
+visToggle.BackgroundColor3 = visibilityCheck and C.accent or C.panel3
+
+visToggle.MouseButton1Click:Connect(function()
+    visibilityCheck = not visibilityCheck
+    visToggle.Text = visibilityCheck and "ON" or "OFF"
+    visToggle.BackgroundColor3 = visibilityCheck and C.accent or C.panel3
+end)
+
+-- FOV size.
+local fovName = label(aimCard, "FOV Size", 13, C.text, Enum.Font.GothamMedium)
+fovName.Position = UDim2.fromOffset(18, 150)
 fovName.Size = UDim2.fromOffset(180, 24)
 
-local fovValue = label(aimCard, "90°", 12, C.accent2, Enum.Font.GothamBold)
+local fovValue = label(aimCard, tostring(fovRadius) .. " px", 12, C.accent2, Enum.Font.GothamBold)
 fovValue.AnchorPoint = Vector2.new(1, 0)
-fovValue.Position = UDim2.new(1, -18, 0, 88)
-fovValue.Size = UDim2.fromOffset(70, 24)
+fovValue.Position = UDim2.new(1, -18, 0, 150)
+fovValue.Size = UDim2.fromOffset(80, 24)
 fovValue.TextXAlignment = Enum.TextXAlignment.Right
 
 local slider = Instance.new("Frame")
 slider.BackgroundColor3 = C.panel3
 slider.BorderSizePixel = 0
-slider.Position = UDim2.fromOffset(18, 124)
+slider.Position = UDim2.fromOffset(18, 186)
 slider.Size = UDim2.new(1, -36, 0, 8)
 slider.Parent = aimCard
 corner(slider, 99)
@@ -14045,7 +14118,7 @@ corner(slider, 99)
 local fill = Instance.new("Frame")
 fill.BackgroundColor3 = C.accent
 fill.BorderSizePixel = 0
-fill.Size = UDim2.new(0.25, 0, 1, 0)
+fill.Size = UDim2.new((fovRadius - 50) / 450, 0, 1, 0)
 fill.Parent = slider
 corner(fill, 99)
 
@@ -14053,7 +14126,7 @@ local knob = Instance.new("Frame")
 knob.BackgroundColor3 = C.text
 knob.BorderSizePixel = 0
 knob.AnchorPoint = Vector2.new(0.5, 0.5)
-knob.Position = UDim2.new(0.25, 0, 0.5, 0)
+knob.Position = UDim2.new((fovRadius - 50) / 450, 0, 0.5, 0)
 knob.Size = UDim2.fromOffset(14, 14)
 knob.Parent = slider
 corner(knob, 99)
@@ -14061,10 +14134,11 @@ corner(knob, 99)
 local draggingFov = false
 local function setFovFromX(x)
     local alpha = math.clamp((x - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
-    local value = math.floor(10 + alpha * 350 + 0.5)
-    fovValue.Text = tostring(value) .. "°"
+    fovRadius = math.floor(50 + alpha * 450 + 0.5)
+    fovValue.Text = tostring(fovRadius) .. " px"
     fill.Size = UDim2.new(alpha, 0, 1, 0)
     knob.Position = UDim2.new(alpha, 0, 0.5, 0)
+    updateFovCircle()
 end
 
 slider.InputBegan:Connect(function(input)
@@ -14086,11 +14160,98 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
-local combatNote = label(aimCard, "These controls are visual settings and are not connected to targeting logic.", 9, C.muted)
-combatNote.Position = UDim2.fromOffset(18, 158)
-combatNote.Size = UDim2.new(1, -36, 0, 40)
-combatNote.TextWrapped = true
-combatNote.TextYAlignment = Enum.TextYAlignment.Top
+-- ==========================
+-- Actual aimbot logic
+-- ==========================
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local aimConnection
+
+local function getAimPart(character)
+    return character and (
+        character:FindFirstChild("Head")
+        or character:FindFirstChild("UpperTorso")
+        or character:FindFirstChild("HumanoidRootPart")
+    )
+end
+
+local function isAlive(player)
+    local character = player and player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    return character and humanoid and humanoid.Health > 0
+end
+
+local function isVisible(part)
+    if not visibilityCheck then
+        return true
+    end
+
+    local origin = Camera.CFrame.Position
+    local direction = part.Position - origin
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {
+        LocalPlayer.Character,
+        Camera
+    }
+    params.IgnoreWater = true
+
+    local result = workspace:Raycast(origin, direction, params)
+    return result == nil or result.Instance:IsDescendantOf(part.Parent)
+end
+
+local function getClosestTarget()
+    local mousePos = UserInputService:GetMouseLocation()
+    local bestPart = nil
+    local bestDistance = fovRadius
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and isAlive(player) then
+            local part = getAimPart(player.Character)
+            if part then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+
+                if onScreen and screenPos.Z > 0 then
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+
+                    if distance <= bestDistance and isVisible(part) then
+                        bestDistance = distance
+                        bestPart = part
+                    end
+                end
+            end
+        end
+    end
+
+    return bestPart
+end
+
+local function aimAt(part)
+    if not part or not part.Parent then
+        return
+    end
+
+    local cameraPosition = Camera.CFrame.Position
+    local desired = CFrame.lookAt(cameraPosition, part.Position)
+
+    -- Smooth camera movement so the aim does not snap instantly.
+    Camera.CFrame = Camera.CFrame:Lerp(desired, math.clamp(aimSmoothness, 0.01, 1))
+end
+
+aimConnection = RunService.RenderStepped:Connect(function()
+    Camera = workspace.CurrentCamera
+    updateFovCircle()
+
+    if not aimEnabled then
+        return
+    end
+
+    local target = getClosestTarget()
+    if target then
+        aimAt(target)
+    end
+end)
 
 -- Settings page
 local settingsTitle = label(settings, "Settings", 23, C.text, Enum.Font.GothamBold)
