@@ -1,7 +1,7 @@
 -- Infinyx loader template
 -- Replace USERNAME/REPO/BRANCH with your GitHub values.
 
-local URL = "https://raw.githubusercontent.com/USERNAME/REPO/BRANCH/Infinyx_Main.lua"
+local URL = "https://raw.githubusercontent.com/Legendoftutti/Infinyx/BRANCH/Infinyx_Main.lua"
 
 local ok, source = pcall(function()
     return game:HttpGet(URL)
