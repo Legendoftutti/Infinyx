@@ -14111,19 +14111,27 @@ aimScroll.BackgroundTransparency = 1
 aimScroll.BorderSizePixel = 0
 aimScroll.Position = UDim2.fromOffset(22, 82)
 aimScroll.Size = UDim2.new(1, -44, 1, -96)
+aimScroll.CanvasPosition = Vector2.new(0, 0)
 aimScroll.CanvasSize = UDim2.fromOffset(0, 0)
-aimScroll.ScrollBarThickness = 5
+aimScroll.ScrollBarThickness = 6
 aimScroll.ScrollBarImageColor3 = C.stroke
+aimScroll.ScrollBarImageTransparency = 0
+aimScroll.ScrollingEnabled = true
+aimScroll.Active = true
+aimScroll.ClipsDescendants = true
 aimScroll.Parent = combat
 
 local aimContent = Instance.new("Frame")
+aimContent.Name = "AimbotContent"
 aimContent.BackgroundTransparency = 1
-aimContent.Size = UDim2.new(1, -8, 0, 750)
+aimContent.Position = UDim2.fromOffset(0, 0)
+aimContent.Size = UDim2.new(1, -8, 0, 0)
 aimContent.Parent = aimScroll
 
 local aimGrid = Instance.new("UIGridLayout")
 aimGrid.CellPadding = UDim2.fromOffset(12, 12)
 aimGrid.CellSize = UDim2.new(0.5, -6, 0, 220)
+aimGrid.SortOrder = Enum.SortOrder.LayoutOrder
 aimGrid.Parent = aimContent
 
 -- Aimbot state variables
@@ -14456,10 +14464,21 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
-aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
-aimGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    aimScroll.CanvasSize = UDim2.fromOffset(0, aimGrid.AbsoluteContentSize.Y + 12)
-end)
+local function updateAimScroll()
+    local contentHeight = aimGrid.AbsoluteContentSize.Y + 16
+
+    -- Keep the content frame exactly as tall as the grid.
+    aimContent.Size = UDim2.new(1, -8, 0, contentHeight)
+
+    -- Canvas must be larger than the viewport before Roblox enables scrolling.
+    aimScroll.CanvasSize = UDim2.fromOffset(0, contentHeight)
+end
+
+aimGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateAimScroll)
+aimScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateAimScroll)
+
+task.defer(updateAimScroll)
+task.delay(0.25, updateAimScroll)
 
 -- ==========================================
 -- AIMBOT ENGINE (fully functional)
