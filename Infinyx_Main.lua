@@ -5986,98 +5986,133 @@ function round(num, numDecimalPlaces)
 end
 
 function ESP(plr, logic)
+    if not plr or plr == Players.LocalPlayer then return end
+
     task.spawn(function()
-        for i,v in pairs(COREGUI:GetChildren()) do
-            if v.Name == plr.Name..'_ESP' then
-                v:Destroy()
+        if not ESPenabled then return end
+        if not plr.Character then return end
+
+        local character = plr.Character
+        local rootPart = getRoot(character)
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not rootPart or not humanoid then return end
+
+        local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
+        if existing then
+            return
+        end
+
+        local holder = Instance.new("Folder")
+        holder.Name = plr.Name .. "_ESP"
+        holder.Parent = COREGUI
+
+        local function colorForPlayer()
+            if logic then
+                return BrickColor.new(
+                    plr.TeamColor == Players.LocalPlayer.TeamColor
+                    and "Bright green"
+                    or "Bright red"
+                )
+            end
+            return plr.TeamColor
+        end
+
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Name = part.Name
+                box.Adornee = part
+                box.AlwaysOnTop = true
+                box.ZIndex = 10
+                box.Size = part.Size
+                box.Transparency = espTransparency
+                box.Color = colorForPlayer()
+                box.Parent = holder
             end
         end
-        wait()
-        if plr.Character and plr.Name ~= Players.LocalPlayer.Name and not COREGUI:FindFirstChild(plr.Name..'_ESP') then
-            local ESPholder = Instance.new("Folder")
-            ESPholder.Name = plr.Name..'_ESP'
-            ESPholder.Parent = COREGUI
-            repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-            for b,n in pairs (plr.Character:GetChildren()) do
-                if (n:IsA("BasePart")) then
-                    local a = Instance.new("BoxHandleAdornment")
-                    a.Name = plr.Name
-                    a.Parent = ESPholder
-                    a.Adornee = n
-                    a.AlwaysOnTop = true
-                    a.ZIndex = 10
-                    a.Size = n.Size
-                    a.Transparency = espTransparency
-                    if logic == true then
-                        a.Color = BrickColor.new(plr.TeamColor == Players.LocalPlayer.TeamColor and "Bright green" or "Bright red")
-                    else
-                        a.Color = plr.TeamColor
+
+        local head = character:FindFirstChild("Head")
+        if head then
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "Info"
+            billboard.Adornee = head
+            billboard.Size = UDim2.fromOffset(180, 45)
+            billboard.StudsOffset = Vector3.new(0, 2.2, 0)
+            billboard.AlwaysOnTop = true
+            billboard.MaxDistance = 10000
+            billboard.Parent = holder
+
+            local label = Instance.new("TextLabel")
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.fromScale(1, 1)
+            label.Font = Enum.Font.GothamSemibold
+            label.TextSize = 13
+            label.TextColor3 = Color3.new(1, 1, 1)
+            label.TextStrokeTransparency = 0
+            label.Parent = billboard
+
+            task.spawn(function()
+                while holder.Parent and ESPenabled and plr.Parent do
+                    local char = plr.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    local root = char and getRoot(char)
+
+                    if char ~= character then
+                        break
                     end
+
+                    if hum and root then
+                        local localRoot = LocalPlayer.Character and getRoot(LocalPlayer.Character)
+                        local studs = localRoot and math.floor((localRoot.Position - root.Position).Magnitude) or 0
+                        label.Text = string.format(
+                            "%s  |  HP: %d  |  %dst",
+                            plr.Name,
+                            math.max(0, math.floor(hum.Health + 0.5)),
+                            studs
+                        )
+                    end
+
+                    task.wait(0.1)
                 end
-            end
-            if plr.Character and plr.Character:FindFirstChild('Head') then
-                local BillboardGui = Instance.new("BillboardGui")
-                local TextLabel = Instance.new("TextLabel")
-                BillboardGui.Adornee = plr.Character.Head
-                BillboardGui.Name = plr.Name
-                BillboardGui.Parent = ESPholder
-                BillboardGui.Size = UDim2.new(0, 100, 0, 150)
-                BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
-                BillboardGui.AlwaysOnTop = true
-                TextLabel.Parent = BillboardGui
-                TextLabel.BackgroundTransparency = 1
-                TextLabel.Position = UDim2.new(0, 0, 0, -50)
-                TextLabel.Size = UDim2.new(0, 100, 0, 100)
-                TextLabel.Font = Enum.Font.SourceSansSemibold
-                TextLabel.TextSize = 20
-                TextLabel.TextColor3 = Color3.new(1, 1, 1)
-                TextLabel.TextStrokeTransparency = 0
-                TextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
-                TextLabel.Text = 'Name: '..plr.Name
-                TextLabel.ZIndex = 10
-                local espLoopFunc
-                local teamChange
-                local addedFunc
-                addedFunc = plr.CharacterAdded:Connect(function()
-                    if ESPenabled then
-                        espLoopFunc:Disconnect()
-                        teamChange:Disconnect()
-                        ESPholder:Destroy()
-                        repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-                        ESP(plr, logic)
-                        addedFunc:Disconnect()
-                    else
-                        teamChange:Disconnect()
-                        addedFunc:Disconnect()
-                    end
-                end)
-                teamChange = plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
-                    if ESPenabled then
-                        espLoopFunc:Disconnect()
-                        addedFunc:Disconnect()
-                        ESPholder:Destroy()
-                        repeat wait(1) until getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
-                        ESP(plr, logic)
-                        teamChange:Disconnect()
-                    else
-                        teamChange:Disconnect()
-                    end
-                end)
-                local function espLoop()
-                    if COREGUI:FindFirstChild(plr.Name..'_ESP') then
-                        if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and Players.LocalPlayer.Character and getRoot(Players.LocalPlayer.Character) and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                            local pos = math.floor((getRoot(Players.LocalPlayer.Character).Position - getRoot(plr.Character).Position).magnitude)
-                            TextLabel.Text = 'Name: '..plr.Name..' | Health: '..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1)..' | Studs: '..pos
-                        end
-                    else
-                        teamChange:Disconnect()
-                        addedFunc:Disconnect()
-                        espLoopFunc:Disconnect()
-                    end
-                end
-                espLoopFunc = RunService.RenderStepped:Connect(espLoop)
-            end
+            end)
         end
+
+        local respawnConnection
+        respawnConnection = plr.CharacterAdded:Connect(function(newCharacter)
+            if not ESPenabled then
+                if respawnConnection then respawnConnection:Disconnect() end
+                return
+            end
+
+            if holder.Parent then
+                holder:Destroy()
+            end
+
+            task.wait(0.15)
+            if ESPenabled and plr.Character == newCharacter then
+                ESP(plr, logic)
+            end
+        end)
+
+        local teamConnection
+        teamConnection = plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
+            if not holder.Parent then
+                if teamConnection then teamConnection:Disconnect() end
+                return
+            end
+
+            local newColor = colorForPlayer()
+            for _, child in ipairs(holder:GetChildren()) do
+                if child:IsA("BoxHandleAdornment") then
+                    child.Color = newColor
+                end
+            end
+        end)
+
+        holder.Destroying:Connect(function()
+            if respawnConnection then respawnConnection:Disconnect() end
+            if teamConnection then teamConnection:Disconnect() end
+        end)
     end)
 end
 
@@ -14537,6 +14572,8 @@ local function isValidTeam(player)
 end
 
 local function getTargetPosition(part)
+    if not part or not part.Parent then return Vector3.zero end
+
     local position = part.Position
     if predictionEnabled and part:IsA("BasePart") then
         position += part.AssemblyLinearVelocity * predictionAmount
@@ -14547,21 +14584,98 @@ local function getTargetPosition(part)
     return position
 end
 
-local function isVisible(part)
-    if not visibilityCheck then return true end
-    if not part or not part.Parent then return false end
+local function isSameTeam(player)
+    if not teamCheck then
+        return false
+    end
 
-    local origin = Camera.CFrame.Position
-    local targetPosition = getTargetPosition(part)
+    if not player or player == LocalPlayer then
+        return true
+    end
+
+    -- Prefer Team, then TeamColor, then neutral.
+    if LocalPlayer.Team ~= nil and player.Team ~= nil then
+        return LocalPlayer.Team == player.Team
+    end
+
+    if LocalPlayer.TeamColor and player.TeamColor then
+        return LocalPlayer.TeamColor == player.TeamColor
+    end
+
+    return false
+end
+
+local function hasLineOfSight(character, targetPosition)
+    if not visibilityCheck then
+        return true
+    end
+
+    if not character or not character.Parent then
+        return false
+    end
+
+    local camera = workspace.CurrentCamera
+    if not camera then return false end
+
+    local origin = camera.CFrame.Position
     local direction = targetPosition - origin
+    if direction.Magnitude <= 0.001 then
+        return true
+    end
 
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    params.FilterDescendantsInstances = {
+        LocalPlayer.Character,
+        camera
+    }
     params.IgnoreWater = true
 
-    local result = workspace:Raycast(origin, direction, params)
-    return result == nil or result.Instance:IsDescendantOf(part.Parent)
+    -- A single ray can hit an accessory/transparent decoration first.
+    -- Retry through character descendants until we either hit the target
+    -- character or a real obstruction.
+    local remainingOrigin = origin
+    local remainingDirection = direction
+    local ignored = {
+        LocalPlayer.Character,
+        camera
+    }
+
+    for _ = 1, 6 do
+        params.FilterDescendantsInstances = ignored
+        local hit = workspace:Raycast(remainingOrigin, remainingDirection, params)
+
+        if not hit then
+            return true
+        end
+
+        if hit.Instance:IsDescendantOf(character) then
+            return true
+        end
+
+        -- Ignore non-blocking/transient instances and continue the ray.
+        if hit.Instance:IsA("BasePart") and hit.Instance.CanQuery then
+            return false
+        end
+
+        table.insert(ignored, hit.Instance)
+        local hitDistance = (hit.Position - remainingOrigin).Magnitude
+        if hitDistance >= remainingDirection.Magnitude then
+            return true
+        end
+
+        remainingOrigin = hit.Position + remainingDirection.Unit * 0.01
+        remainingDirection = targetPosition - remainingOrigin
+    end
+
+    return false
+end
+
+local function isValidTeam(player)
+    if not teamCheck then
+        return true
+    end
+    return not isSameTeam(player)
 end
 
 local function getClosestTarget()
@@ -14570,11 +14684,16 @@ local function getClosestTarget()
 
     if stickyAim and currentTarget and currentTarget.Parent then
         local player = Players:GetPlayerFromCharacter(currentTarget.Parent)
-        if player and player ~= LocalPlayer and isAlive(player) and isValidTeam(player) then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(getTargetPosition(currentTarget))
-            if onScreen and screenPos.Z > 0 and isVisible(currentTarget) then
+        if player and player ~= LocalPlayer
+            and isAlive(player)
+            and isValidTeam(player) then
+
+            local targetPosition = getTargetPosition(currentTarget)
+            local screenPos, onScreen = Camera:WorldToViewportPoint(targetPosition)
+
+            if onScreen and screenPos.Z > 0 then
                 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                if distance <= fovRadius then
+                if distance <= fovRadius and hasLineOfSight(currentTarget.Parent, targetPosition) then
                     return currentTarget, player
                 end
             end
@@ -14583,20 +14702,31 @@ local function getClosestTarget()
     end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and isAlive(player) and isValidTeam(player) then
-            local part = getAimPart(player.Character)
-            if part then
-                local pos = getTargetPosition(part)
-                local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+        if player ~= LocalPlayer
+            and isAlive(player)
+            and isValidTeam(player) then
+
+            local character = player.Character
+            local part = getAimPart(character)
+
+            if part and character then
+                local targetPosition = getTargetPosition(part)
+                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPosition)
+
                 if onScreen and screenPos.Z > 0 then
                     local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                    if distance <= bestDistance and isVisible(part) then
-                        bestDistance, bestPart, bestPlayer = distance, part, player
+
+                    if distance <= bestDistance
+                        and hasLineOfSight(character, targetPosition) then
+                        bestDistance = distance
+                        bestPart = part
+                        bestPlayer = player
                     end
                 end
             end
         end
     end
+
     currentTarget = bestPart
     return bestPart, bestPlayer
 end
