@@ -31,91 +31,214 @@ local function showLoadingScreen()
     loadingGui.Name = "InfinyxLoading"
     loadingGui.ResetOnSpawn = false
     loadingGui.DisplayOrder = 999
+    loadingGui.IgnoreGuiInset = true
     loadingGui.Parent = game:GetService("CoreGui")
 
+    -- Professional full-screen backdrop
     local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    bg.BackgroundTransparency = 0.1
+    bg.Size = UDim2.fromScale(1, 1)
+    bg.BackgroundColor3 = Color3.fromRGB(5, 5, 7)
+    bg.BorderSizePixel = 0
     bg.Parent = loadingGui
-    local corner = Instance.new("UICorner")
-    corner.Parent = bg
 
-    -- Glowing "Infinyx" logo
+    local backgroundGradient = Instance.new("UIGradient")
+    backgroundGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 5, 7)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(14, 8, 10)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 4, 6))
+    })
+    backgroundGradient.Rotation = 90
+    backgroundGradient.Parent = bg
+
+    -- Center card
+    local card = Instance.new("Frame")
+    card.AnchorPoint = Vector2.new(0.5, 0.5)
+    card.Position = UDim2.fromScale(0.5, 0.5)
+    card.Size = UDim2.new(0, 520, 0, 300)
+    card.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
+    card.BackgroundTransparency = 0.04
+    card.BorderSizePixel = 0
+    card.Parent = bg
+
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 16)
+    cardCorner.Parent = card
+
+    local cardStroke = Instance.new("UIStroke")
+    cardStroke.Color = Color3.fromRGB(105, 25, 35)
+    cardStroke.Thickness = 1
+    cardStroke.Transparency = 0.15
+    cardStroke.Parent = card
+
+    -- Small brand mark
+    local mark = Instance.new("Frame")
+    mark.AnchorPoint = Vector2.new(0.5, 0)
+    mark.Position = UDim2.new(0.5, 0, 0, 34)
+    mark.Size = UDim2.fromOffset(44, 4)
+    mark.BackgroundColor3 = Color3.fromRGB(180, 35, 50)
+    mark.BorderSizePixel = 0
+    mark.Parent = card
+
+    local markCorner = Instance.new("UICorner")
+    markCorner.CornerRadius = UDim.new(1, 0)
+    markCorner.Parent = mark
+
     local logo = Instance.new("TextLabel")
-    logo.Size = UDim2.new(0, 400, 0, 100)
-    logo.Position = UDim2.new(0.5, -200, 0.3, 0)
+    logo.AnchorPoint = Vector2.new(0.5, 0)
+    logo.Position = UDim2.new(0.5, 0, 0, 52)
+    logo.Size = UDim2.new(1, -60, 0, 58)
     logo.BackgroundTransparency = 1
     logo.Font = Enum.Font.GothamBold
-    logo.TextSize = 60
-    logo.Text = "Infinyx"
-    logo.TextColor3 = Color3.fromRGB(255, 200, 0) -- orange
-    logo.TextStrokeTransparency = 0
-    logo.TextStrokeColor3 = Color3.fromRGB(255, 100, 0)
-    logo.Parent = bg
+    logo.TextSize = 42
+    logo.Text = "INFINYX"
+    logo.TextColor3 = Color3.fromRGB(245, 245, 248)
+    logo.TextTransparency = 1
+    logo.Parent = card
 
-    -- Glow effect via UIStroke (orange)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 150, 0)
-    stroke.Thickness = 3
-    stroke.Transparency = 0.2
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stroke.Parent = logo
+    local logoStroke = Instance.new("UIStroke")
+    logoStroke.Color = Color3.fromRGB(145, 30, 45)
+    logoStroke.Thickness = 1.5
+    logoStroke.Transparency = 0.35
+    logoStroke.Parent = logo
 
-    -- Glow shadow (duplicate for glow)
-    local glow = Instance.new("Frame")
-    glow.Size = UDim2.new(1, 20, 1, 20)
-    glow.Position = UDim2.new(0, -10, 0, -10)
-    glow.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
-    glow.BackgroundTransparency = 0.7
-    glow.BorderSizePixel = 0
-    glow.Parent = logo
-    local glowCorner = Instance.new("UICorner")
-    glowCorner.CornerRadius = UDim.new(0, 10)
-    glowCorner.Parent = glow
+    local subtitle = Instance.new("TextLabel")
+    subtitle.AnchorPoint = Vector2.new(0.5, 0)
+    subtitle.Position = UDim2.new(0.5, 0, 0, 108)
+    subtitle.Size = UDim2.new(1, -60, 0, 24)
+    subtitle.BackgroundTransparency = 1
+    subtitle.Font = Enum.Font.Gotham
+    subtitle.TextSize = 13
+    subtitle.Text = "INITIALIZING SECURE COMMAND ENVIRONMENT"
+    subtitle.TextColor3 = Color3.fromRGB(145, 145, 155)
+    subtitle.TextTransparency = 1
+    subtitle.Parent = card
 
-    -- Status message
     local status = Instance.new("TextLabel")
-    status.Size = UDim2.new(0, 400, 0, 50)
-    status.Position = UDim2.new(0.5, -200, 0.5, 30)
+    status.AnchorPoint = Vector2.new(0.5, 0)
+    status.Position = UDim2.new(0.5, 0, 0, 150)
+    status.Size = UDim2.new(1, -60, 0, 24)
     status.BackgroundTransparency = 1
-    status.Font = Enum.Font.Gotham
-    status.TextSize = 28
-    status.Text = "Initializing..."
-    status.TextColor3 = Color3.fromRGB(255, 255, 255)
-    status.TextStrokeTransparency = 0
-    status.TextStrokeColor3 = Color3.fromRGB(80, 0, 0)
-    status.Parent = bg
+    status.Font = Enum.Font.GothamMedium
+    status.TextSize = 15
+    status.Text = "Preparing interface"
+    status.TextColor3 = Color3.fromRGB(225, 225, 230)
+    status.TextTransparency = 1
+    status.Parent = card
 
-    -- Sequence of messages
-    local messages = {"Incoming", "Executed Ingredients", "Target Acquired", "Target Eliminated"}
-    local delay = 2.5 -- seconds per message
-    local totalTime = 10
+    local percentage = Instance.new("TextLabel")
+    percentage.AnchorPoint = Vector2.new(1, 0)
+    percentage.Position = UDim2.new(1, -30, 0, 150)
+    percentage.Size = UDim2.fromOffset(70, 24)
+    percentage.BackgroundTransparency = 1
+    percentage.Font = Enum.Font.GothamBold
+    percentage.TextSize = 13
+    percentage.Text = "0%"
+    percentage.TextColor3 = Color3.fromRGB(185, 55, 70)
+    percentage.TextTransparency = 1
+    percentage.Parent = card
 
-    local function updateMessage(index)
-        if index <= #messages then
-            status.Text = messages[index]
-            -- Glow the text
-            status.TextColor3 = Color3.fromRGB(255, 200, 100)
-            TweenService:Create(status, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-            task.wait(delay)
-            updateMessage(index + 1)
-        else
-            -- Loading complete, fade out and destroy
-            TweenService:Create(bg, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {BackgroundTransparency = 1}):Play()
-            task.wait(1)
-            loadingGui:Destroy()
-        end
+    -- Progress track
+    local track = Instance.new("Frame")
+    track.AnchorPoint = Vector2.new(0.5, 0)
+    track.Position = UDim2.new(0.5, 0, 0, 190)
+    track.Size = UDim2.new(1, -60, 0, 6)
+    track.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    track.BackgroundTransparency = 1
+    track.BorderSizePixel = 0
+    track.Parent = card
+
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = track
+
+    local progress = Instance.new("Frame")
+    progress.Size = UDim2.new(0, 0, 1, 0)
+    progress.BackgroundColor3 = Color3.fromRGB(170, 35, 52)
+    progress.BorderSizePixel = 0
+    progress.Parent = track
+
+    local progressCorner = Instance.new("UICorner")
+    progressCorner.CornerRadius = UDim.new(1, 0)
+    progressCorner.Parent = progress
+
+    local progressGradient = Instance.new("UIGradient")
+    progressGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 25, 40)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(210, 45, 65)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 25, 40))
+    })
+    progressGradient.Parent = progress
+
+    local footer = Instance.new("TextLabel")
+    footer.AnchorPoint = Vector2.new(0.5, 0)
+    footer.Position = UDim2.new(0.5, 0, 0, 224)
+    footer.Size = UDim2.new(1, -60, 0, 22)
+    footer.BackgroundTransparency = 1
+    footer.Font = Enum.Font.Gotham
+    footer.TextSize = 11
+    footer.Text = "INFINYX  •  FE v6.4.2  •  LOADING"
+    footer.TextColor3 = Color3.fromRGB(95, 95, 105)
+    footer.TextTransparency = 1
+    footer.Parent = card
+
+    -- Fade in the interface
+    local fadeInfo = TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    for _, object in ipairs({logo, subtitle, status, percentage, track, footer}) do
+        local goal = {TextTransparency = 0}
+        if object == track then goal = {BackgroundTransparency = 0} end
+        TweenService:Create(object, fadeInfo, goal):Play()
     end
 
-    -- Start sequence
-    task.spawn(updateMessage, 1)
+    -- Ten-second loading sequence, including the final fade-out.
+    local stages = {
+        {text = "Preparing interface", from = 0.00, to = 0.20},
+        {text = "Loading command modules", from = 0.20, to = 0.45},
+        {text = "Initializing visual systems", from = 0.45, to = 0.70},
+        {text = "Finalizing configuration", from = 0.70, to = 0.90},
+        {text = "Ready to launch", from = 0.90, to = 1.00}
+    }
 
-    -- Also animate the logo glow
+    local totalLoadTime = 8.5
+    local stageDuration = totalLoadTime / #stages
+
     task.spawn(function()
-        while loadingGui.Parent do
-            stroke.Transparency = (stroke.Transparency == 0.2 and 0.5 or 0.2)
-            task.wait(1.5)
+        for index, stage in ipairs(stages) do
+            status.Text = stage.text
+            local tween = TweenService:Create(
+                progress,
+                TweenInfo.new(stageDuration, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+                {Size = UDim2.new(stage.to, 0, 1, 0)}
+            )
+            tween:Play()
+
+            local startPercent = math.floor(stage.from * 100)
+            local endPercent = math.floor(stage.to * 100)
+            local started = os.clock()
+
+            while os.clock() - started < stageDuration do
+                local alpha = math.clamp((os.clock() - started) / stageDuration, 0, 1)
+                local value = math.floor(startPercent + (endPercent - startPercent) * alpha)
+                percentage.Text = tostring(value) .. "%"
+                task.wait(0.05)
+            end
+            percentage.Text = tostring(endPercent) .. "%"
+        end
+
+        -- Final 1.5 seconds: polished fade-out = approximately 10 seconds total.
+        task.wait(0.1)
+        local fadeOut = TweenInfo.new(1.4, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
+        TweenService:Create(card, fadeOut, {BackgroundTransparency = 1}):Play()
+        TweenService:Create(bg, fadeOut, {BackgroundTransparency = 1}):Play()
+        for _, object in ipairs({logo, subtitle, status, percentage, footer}) do
+            TweenService:Create(object, fadeOut, {TextTransparency = 1}):Play()
+        end
+        TweenService:Create(track, fadeOut, {BackgroundTransparency = 1}):Play()
+        TweenService:Create(progress, fadeOut, {BackgroundTransparency = 1}):Play()
+        TweenService:Create(cardStroke, fadeOut, {Transparency = 1}):Play()
+        task.wait(1.4)
+
+        if loadingGui.Parent then
+            loadingGui:Destroy()
         end
     end)
 
@@ -126,7 +249,7 @@ end
 local loadGui = showLoadingScreen()
 
 -- Wait for loading to finish (approx. 10 seconds) before building main UI
-task.wait(10.5) -- give extra time for fade out
+task.wait(10.05) -- keep the main UI synchronized with the ~10 second loading sequence
 
 -- ==========================================
 -- MAIN SCRIPT (original IY with modifications)
@@ -3025,10 +3148,10 @@ reference = (function()
         {110,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=4,Name="Text",Parent={105},Position=UDim2.new(0,8,0,130),Size=UDim2.new(1,-8,0,16),Text="Example:",TextColor3=Color3.new(1,1,1),TextSize=14,TextWrapped=true,TextXAlignment=0,TextYAlignment=0,ZIndex=10,}},
         {111,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=3,Name="Text",Parent={105},Position=UDim2.new(0,8,0,148),Size=UDim2.new(1,-8,0,16),Text="Setting up 'goto $1' on the OnChatted event will teleport you to any player that chats.",TextColor3=Color3.new(1,1,1),TextSize=14,TextWrapped=true,TextXAlignment=0,TextYAlignment=0,ZIndex=10,}},
         {112,"Frame",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Name="Section",Parent={7},Size=UDim2.new(1,0,0,105),ZIndex=10,}},
-        {113,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=4,Name="Header",Parent={112},Position=UDim2.new(0,8,0,5),Size=UDim2.new(1,-8,0,20),Text="Get Further Help",TextColor3=Color3.new(1,1,1),TextSize=20,TextXAlignment=0,ZIndex=10,}},
-        {114,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=3,Name="Text",Parent={112},Position=UDim2.new(0,8,0,30),Size=UDim2.new(1,-8,0,32),Text="You can join the Discord server to get support with IY,  and read up on more documentation such as the Plugin API.",TextColor3=Color3.new(1,1,1),TextSize=14,TextWrapped=true,TextXAlignment=0,ZIndex=10,}},
+        {113,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=4,Name="Header",Parent={112},Position=UDim2.new(0,8,0,5),Size=UDim2.new(1,-8,0,20),Text="Infinyx Community",TextColor3=Color3.new(1,1,1),TextSize=20,TextXAlignment=0,ZIndex=10,}},
+        {114,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=3,Name="Text",Parent={112},Position=UDim2.new(0,8,0,30),Size=UDim2.new(1,-8,0,32),Text="Join the official Infinyx Discord server for updates, plugins, community resources, and project information.",TextColor3=Color3.new(1,1,1),TextSize=14,TextWrapped=true,TextXAlignment=0,ZIndex=10,}},
         {115,"Frame",{BackgroundColor3=Color3.new(0.1803921610117,0.1803921610117,0.1843137294054),BorderSizePixel=0,Name="Line",Parent={112},Position=UDim2.new(0,10,1,-1),Size=UDim2.new(1,-20,0,1),Visible=false,ZIndex=10,}},
-        {116,"TextButton",{BackgroundColor3=Color3.new(0.48627451062202,0.61960786581039,0.85098040103912),BorderColor3=Color3.new(0.1803921610117,0.1803921610117,0.1843137294054),Font=4,Name="InviteButton",Parent={112},Position=UDim2.new(0,5,0,75),Size=UDim2.new(1,-10,0,25),Text="Copy Discord Invite Link (https://discord.gg/Vnx7nAkkW7)",TextColor3=Color3.new(0.1803921610117,0.1803921610117,0.1843137294054),TextSize=16,ZIndex=10,}},
+        {116,"TextButton",{BackgroundColor3=Color3.new(0.48627451062202,0.61960786581039,0.85098040103912),BorderColor3=Color3.new(0.1803921610117,0.1803921610117,0.1843137294054),Font=4,Name="InviteButton",Parent={112},Position=UDim2.new(0,5,0,75),Size=UDim2.new(1,-10,0,25),Text="COPY DISCORD INVITE",TextColor3=Color3.new(0.1803921610117,0.1803921610117,0.1843137294054),TextSize=16,ZIndex=10,}},
     })
     for i,v in pairs(main.Content.List:GetDescendants()) do
         if v:IsA("TextLabel") then
@@ -3055,7 +3178,7 @@ reference = (function()
         lastPress = pressTime
         wait(2)
         if lastPress ~= pressTime then return end
-        inviteButton.Text = "Copy Discord Invite Link (https://discord.gg/Vnx7nAkkW7)"
+        inviteButton.Text = "COPY DISCORD INVITE"
     end)
     dragGUI(main)
     main.Parent = ScaledHolder
@@ -4617,7 +4740,7 @@ function autoComplete(str,curText)
 end
 
 CMDs = {}
-CMDs[#CMDs + 1] = {NAME = 'discord / support / help', DESC = 'Invite to the Infinite Yield discord server.'}
+CMDs[#CMDs + 1] = {NAME = 'community / server', DESC = 'Shows the Infinyx Discord server invite and copies it when supported.'}
 CMDs[#CMDs + 1] = {NAME = 'guiscale [number]', DESC = 'Changes the size of the gui. [number] accepts decimals and whole numbers. Min is 0.4 and Max is 2'}
 CMDs[#CMDs + 1] = {NAME = 'console', DESC = 'Opens the Roblox console'}
 CMDs[#CMDs + 1] = {NAME = 'oldconsole', DESC = 'Loads an old-themed Roblox console'}
@@ -6691,27 +6814,13 @@ addcmd('clraliases',{},function(args, speaker)
     refreshaliases()
 end)
 
-addcmd('discord', {'support', 'help'}, function(args, speaker)
+addcmd('community', {'server'}, function(args, speaker)
+    local invite = 'https://discord.gg/Vnx7nAkkW7'
     if everyClipboard then
-        toClipboard('https://discord.gg/Vnx7nAkkW7')
-        notify('Discord Invite', 'Copied to clipboard!\ndiscord.gg/Vnx7nAkkW7')
+        toClipboard(invite)
+        notify('Infinyx Community', 'Discord invite copied to clipboard!\n' .. invite)
     else
-        notify('Discord Invite', 'discord.gg/Vnx7nAkkW7')
-    end
-    if httprequest then
-        httprequest({
-            Url = 'http://127.0.0.1:6463/rpc?v=1',
-            Method = 'POST',
-            Headers = {
-                ['Content-Type'] = 'application/json',
-                Origin = 'https://discord.com'
-            },
-            Body = HttpService:JSONEncode({
-                cmd = 'INVITE_BROWSER',
-                nonce = HttpService:GenerateGUID(false),
-                args = {code = 'Vnx7nAkkW7'}
-            })
-        })
+        notify('Infinyx Community', 'Join the Infinyx Discord server:\n' .. invite)
     end
 end)
 
