@@ -6709,7 +6709,7 @@ addcmd('discord', {'support', 'help'}, function(args, speaker)
             Body = HttpService:JSONEncode({
                 cmd = 'INVITE_BROWSER',
                 nonce = HttpService:GenerateGUID(false),
-                args = {code = '78ZuWSq'}
+                args = {code = 'Vnx7nAkkW7'}
             })
         })
     end
