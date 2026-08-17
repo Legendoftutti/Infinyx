@@ -6069,7 +6069,10 @@ function ESP(plr, logic)
             billboard.Adornee = currentHead
             highlight.Adornee = char
 
-            local localChar = LocalPlayer.Character
+            -- LocalPlayer is initialized later in the script, so don't rely on
+            -- that later global here. Resolve it safely from Players each update.
+            local localPlayer = Players.LocalPlayer
+            local localChar = localPlayer and localPlayer.Character
             local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
             local distanceText = ""
 
@@ -14476,7 +14479,7 @@ function ESP(plr, logic)
                 -- is enabled, tint teammates/enemies while keeping the
                 -- supplied white outline style as the default.
                 if logic then
-                    if LocalPlayer.Team and plr.Team and LocalPlayer.Team == plr.Team then
+                    if localPlayer and localPlayer.Team and plr.Team and localPlayer.Team == plr.Team then
                         highlight.OutlineColor = Color3.fromRGB(0, 255, 120)
                     else
                         highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
