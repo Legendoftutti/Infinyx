@@ -5986,133 +5986,126 @@ function round(num, numDecimalPlaces)
 end
 
 function ESP(plr, logic)
-    if not plr or plr == Players.LocalPlayer then return end
+    if not plr or plr == Players.LocalPlayer or not ESPenabled then return end
 
+    local character = plr.Character
+    if not character then return end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local head = character:FindFirstChild("Head")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not rootPart or not head or not humanoid then return end
+
+    -- Never rebuild an ESP that already exists.
+    local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
+    if existing then return end
+
+    local holder = Instance.new("Folder")
+    holder.Name = plr.Name .. "_ESP"
+    holder.Parent = COREGUI
+
+    -- This follows the supplied Universal-ESP design:
+    -- Highlight outline + name/status Billboard.
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Highlight"
+    highlight.Adornee = character
+    highlight.FillTransparency = 1
+    highlight.OutlineTransparency = 0
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = holder
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "Info"
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 10000
+    billboard.Parent = holder
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "ESPText"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 14
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.Text = "Loading..."
+    textLabel.Parent = billboard
+
+    local alive = true
+    holder.Destroying:Connect(function()
+        alive = false
+    end)
+
+    -- Keep the supplied ESP information current without recreating it.
     task.spawn(function()
-        if not ESPenabled then return end
-        if not plr.Character then return end
+        while alive and ESPenabled and plr.Parent do
+            local char = plr.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local headNow = char and char:FindFirstChild("Head")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local localChar = LocalPlayer.Character
+            local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
 
-        local character = plr.Character
-        local rootPart = getRoot(character)
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if not rootPart or not humanoid then return end
-
-        local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
-        if existing then
-            return
-        end
-
-        local holder = Instance.new("Folder")
-        holder.Name = plr.Name .. "_ESP"
-        holder.Parent = COREGUI
-
-        local function colorForPlayer()
-            if logic then
-                return BrickColor.new(
-                    plr.TeamColor == Players.LocalPlayer.TeamColor
-                    and "Bright green"
-                    or "Bright red"
-                )
-            end
-            return plr.TeamColor
-        end
-
-        for _, part in ipairs(character:GetChildren()) do
-            if part:IsA("BasePart") then
-                local box = Instance.new("BoxHandleAdornment")
-                box.Name = part.Name
-                box.Adornee = part
-                box.AlwaysOnTop = true
-                box.ZIndex = 10
-                box.Size = part.Size
-                box.Transparency = espTransparency
-                box.Color = colorForPlayer()
-                box.Parent = holder
-            end
-        end
-
-        local head = character:FindFirstChild("Head")
-        if head then
-            local billboard = Instance.new("BillboardGui")
-            billboard.Name = "Info"
-            billboard.Adornee = head
-            billboard.Size = UDim2.fromOffset(180, 45)
-            billboard.StudsOffset = Vector3.new(0, 2.2, 0)
-            billboard.AlwaysOnTop = true
-            billboard.MaxDistance = 10000
-            billboard.Parent = holder
-
-            local label = Instance.new("TextLabel")
-            label.BackgroundTransparency = 1
-            label.Size = UDim2.fromScale(1, 1)
-            label.Font = Enum.Font.GothamSemibold
-            label.TextSize = 13
-            label.TextColor3 = Color3.new(1, 1, 1)
-            label.TextStrokeTransparency = 0
-            label.Parent = billboard
-
-            task.spawn(function()
-                while holder.Parent and ESPenabled and plr.Parent do
-                    local char = plr.Character
-                    local hum = char and char:FindFirstChildOfClass("Humanoid")
-                    local root = char and getRoot(char)
-
-                    if char ~= character then
-                        break
-                    end
-
-                    if hum and root then
-                        local localRoot = LocalPlayer.Character and getRoot(LocalPlayer.Character)
-                        local studs = localRoot and math.floor((localRoot.Position - root.Position).Magnitude) or 0
-                        label.Text = string.format(
-                            "%s  |  HP: %d  |  %dst",
-                            plr.Name,
-                            math.max(0, math.floor(hum.Health + 0.5)),
-                            studs
-                        )
-                    end
-
-                    task.wait(0.1)
-                end
-            end)
-        end
-
-        local respawnConnection
-        respawnConnection = plr.CharacterAdded:Connect(function(newCharacter)
-            if not ESPenabled then
-                if respawnConnection then respawnConnection:Disconnect() end
-                return
-            end
-
-            if holder.Parent then
+            -- If the player respawned, replace only this player's ESP.
+            if char ~= character then
                 holder:Destroy()
-            end
-
-            task.wait(0.15)
-            if ESPenabled and plr.Character == newCharacter then
-                ESP(plr, logic)
-            end
-        end)
-
-        local teamConnection
-        teamConnection = plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
-            if not holder.Parent then
-                if teamConnection then teamConnection:Disconnect() end
+                task.wait(0.15)
+                if ESPenabled and plr.Parent then
+                    ESP(plr, logic)
+                end
                 return
             end
 
-            local newColor = colorForPlayer()
-            for _, child in ipairs(holder:GetChildren()) do
-                if child:IsA("BoxHandleAdornment") then
-                    child.Color = newColor
+            if root and headNow and hum then
+                billboard.Adornee = headNow
+
+                local distance = localRoot
+                    and (root.Position - localRoot.Position).Magnitude
+                    or 0
+
+                local teamName = plr.Team and plr.Team.Name or "No Team"
+                local health = math.floor(hum.Health + 0.5)
+                local maxHealth = math.floor(hum.MaxHealth + 0.5)
+
+                textLabel.Text = string.format(
+                    "%s | %.1fm | %d/%d HP | %s",
+                    teamName,
+                    distance,
+                    health,
+                    maxHealth,
+                    plr.Name
+                )
+
+                -- The supplied script uses a white outline. If Team Logic
+                -- is enabled, tint teammates/enemies while keeping the
+                -- supplied white outline style as the default.
+                if logic then
+                    if LocalPlayer.Team and plr.Team and LocalPlayer.Team == plr.Team then
+                        highlight.OutlineColor = Color3.fromRGB(0, 255, 120)
+                    else
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    end
+                else
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                 end
             end
-        end)
 
-        holder.Destroying:Connect(function()
-            if respawnConnection then respawnConnection:Disconnect() end
-            if teamConnection then teamConnection:Disconnect() end
-        end)
+            task.wait(0.1)
+        end
+    end)
+
+    plr.CharacterAdded:Connect(function()
+        if not ESPenabled then return end
+        task.wait(0.15)
+        if plr.Parent and plr.Character then
+            local old = COREGUI:FindFirstChild(plr.Name .. "_ESP")
+            if old then old:Destroy() end
+            ESP(plr, logic)
+        end
     end)
 end
 
@@ -14285,36 +14278,130 @@ autoNote.Position = UDim2.fromOffset(16, 179)
 autoNote.Size = UDim2.new(1, -32, 0, 16)
 
 local espCard = makeCard(aimContent, "ESP", "Visual target awareness inside the Aimbot page.")
-addToggleRow(espCard, 62, "ESP", "Show player boxes and names.", espEnabledUI, function(v)
-    espEnabledUI = v
-    if v then
-        execCmd("esp")
-    else
-        execCmd("noesp")
-    end
-end)
-addToggleRow(espCard, 101, "ESP Team Logic", "Use existing team-aware ESP coloring.", true, function(v) end)
-local espInfo = label(espCard, "Persistent ESP: existing players stay visible; new/respawned players are added automatically.", 8, C.muted)
-espInfo.Position = UDim2.fromOffset(16, 140)
-espInfo.Size = UDim2.new(1, -32, 0, 30)
+function ESP(plr, logic)
+    if not plr or plr == Players.LocalPlayer or not ESPenabled then return end
 
--- ESP watchdog: only add a missing player's ESP. It does NOT call noesp/esp
--- and therefore does not make the whole ESP disappear and reappear.
-task.spawn(function()
-    while InfinyxUI and InfinyxUI.Parent do
-        if espEnabledUI and ESPenabled then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= Players.LocalPlayer
-                    and player.Character
-                    and getRoot(player.Character)
-                    and not COREGUI:FindFirstChild(player.Name .. "_ESP") then
-                    ESP(player)
+    local character = plr.Character
+    if not character then return end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    local head = character:FindFirstChild("Head")
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not rootPart or not head or not humanoid then return end
+
+    -- Never rebuild an ESP that already exists.
+    local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
+    if existing then return end
+
+    local holder = Instance.new("Folder")
+    holder.Name = plr.Name .. "_ESP"
+    holder.Parent = COREGUI
+
+    -- This follows the supplied Universal-ESP design:
+    -- Highlight outline + name/status Billboard.
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Highlight"
+    highlight.Adornee = character
+    highlight.FillTransparency = 1
+    highlight.OutlineTransparency = 0
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = holder
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "Info"
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = 10000
+    billboard.Parent = holder
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "ESPText"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 14
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.Text = "Loading..."
+    textLabel.Parent = billboard
+
+    local alive = true
+    holder.Destroying:Connect(function()
+        alive = false
+    end)
+
+    -- Keep the supplied ESP information current without recreating it.
+    task.spawn(function()
+        while alive and ESPenabled and plr.Parent do
+            local char = plr.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local headNow = char and char:FindFirstChild("Head")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local localChar = LocalPlayer.Character
+            local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+
+            -- If the player respawned, replace only this player's ESP.
+            if char ~= character then
+                holder:Destroy()
+                task.wait(0.15)
+                if ESPenabled and plr.Parent then
+                    ESP(plr, logic)
+                end
+                return
+            end
+
+            if root and headNow and hum then
+                billboard.Adornee = headNow
+
+                local distance = localRoot
+                    and (root.Position - localRoot.Position).Magnitude
+                    or 0
+
+                local teamName = plr.Team and plr.Team.Name or "No Team"
+                local health = math.floor(hum.Health + 0.5)
+                local maxHealth = math.floor(hum.MaxHealth + 0.5)
+
+                textLabel.Text = string.format(
+                    "%s | %.1fm | %d/%d HP | %s",
+                    teamName,
+                    distance,
+                    health,
+                    maxHealth,
+                    plr.Name
+                )
+
+                -- The supplied script uses a white outline. If Team Logic
+                -- is enabled, tint teammates/enemies while keeping the
+                -- supplied white outline style as the default.
+                if logic then
+                    if LocalPlayer.Team and plr.Team and LocalPlayer.Team == plr.Team then
+                        highlight.OutlineColor = Color3.fromRGB(0, 255, 120)
+                    else
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    end
+                else
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                 end
             end
+
+            task.wait(0.1)
         end
-        task.wait(1)
-    end
-end)
+    end)
+
+    plr.CharacterAdded:Connect(function()
+        if not ESPenabled then return end
+        task.wait(0.15)
+        if plr.Parent and plr.Character then
+            local old = COREGUI:FindFirstChild(plr.Name .. "_ESP")
+            if old then old:Destroy() end
+            ESP(plr, logic)
+        end
+    end)
+end
+
 
 local safetyCard = makeCard(aimContent, "Filters", "Prevent low-value or invalid targets.")
 addToggleRow(safetyCard, 62, "Knock Check", "Skip knocked / KO / platform-stunned targets.", knockCheck, function(v) knockCheck = v end)
