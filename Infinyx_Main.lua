@@ -14278,21 +14278,43 @@ autoNote.Position = UDim2.fromOffset(16, 179)
 autoNote.Size = UDim2.new(1, -32, 0, 16)
 
 local espCard = makeCard(aimContent, "ESP", "Universal ESP: name, team, distance and health.")
+espCard.ClipsDescendants = false
+espCard.Active = true
+espCard.ZIndex = 5
 
-addToggleRow(espCard, 62, "ESP", "Show ESP on all other players.", espEnabledUI, function(v)
-    espEnabledUI = v
-    ESPenabled = v
+-- Explicit ESP toggle. This is deliberately created directly instead of
+-- relying on the generic toggle-row helper, so it cannot be hidden by the
+-- card/grid layout.
+local espToggleLabel = label(espCard, "ESP", 11, C.text, Enum.Font.GothamMedium)
+espToggleLabel.Position = UDim2.fromOffset(16, 67)
+espToggleLabel.Size = UDim2.new(1, -100, 0, 18)
+espToggleLabel.ZIndex = 20
 
-    if v then
-        -- Add ESP to every current player. The existing ESP manager handles
-        -- new players and respawns without rebuilding everyone.
+local espToggleDesc = label(espCard, "Show ESP on all other players.", 8, C.muted)
+espToggleDesc.Position = UDim2.fromOffset(16, 85)
+espToggleDesc.Size = UDim2.new(1, -100, 0, 15)
+espToggleDesc.ZIndex = 20
+
+local espToggle = button(espCard, espEnabledUI and "ON" or "OFF", 9)
+espToggle.AnchorPoint = Vector2.new(1, 0)
+espToggle.Position = UDim2.new(1, -16, 0, 67)
+espToggle.Size = UDim2.fromOffset(60, 26)
+espToggle.ZIndex = 25
+espToggle.Visible = true
+setToggleVisual(espToggle, espEnabledUI)
+
+espToggle.MouseButton1Click:Connect(function()
+    espEnabledUI = not espEnabledUI
+    ESPenabled = espEnabledUI
+    setToggleVisual(espToggle, espEnabledUI)
+
+    if espEnabledUI then
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= Players.LocalPlayer then
                 ESP(player)
             end
         end
     else
-        -- Remove only the integrated ESP objects.
         for _, player in ipairs(Players:GetPlayers()) do
             local holder = COREGUI:FindFirstChild(player.Name .. "_ESP")
             if holder then
