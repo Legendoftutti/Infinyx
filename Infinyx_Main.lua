@@ -14277,7 +14277,31 @@ local autoNote = label(automationCard, "Auto Shoot uses mouse1click / VirtualInp
 autoNote.Position = UDim2.fromOffset(16, 179)
 autoNote.Size = UDim2.new(1, -32, 0, 16)
 
-local espCard = makeCard(aimContent, "ESP", "Visual target awareness inside the Aimbot page.")
+local espCard = makeCard(aimContent, "ESP", "Universal ESP: name, team, distance and health.")
+
+addToggleRow(espCard, 62, "ESP", "Show ESP on all other players.", espEnabledUI, function(v)
+    espEnabledUI = v
+    ESPenabled = v
+
+    if v then
+        -- Add ESP to every current player. The existing ESP manager handles
+        -- new players and respawns without rebuilding everyone.
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer then
+                ESP(player)
+            end
+        end
+    else
+        -- Remove only the integrated ESP objects.
+        for _, player in ipairs(Players:GetPlayers()) do
+            local holder = COREGUI:FindFirstChild(player.Name .. "_ESP")
+            if holder then
+                holder:Destroy()
+            end
+        end
+    end
+end)
+
 function ESP(plr, logic)
     if not plr or plr == Players.LocalPlayer or not ESPenabled then return end
 
