@@ -13,6 +13,7 @@
       existing settings/assets behavior.
 ]]
 
+-- Infinyx FINAL ESP/AIM FIX build.
 -- Prevent accidental double execution in the same environment.
 pcall(function()
     local env = (getgenv and getgenv()) or _G
@@ -2381,7 +2382,7 @@ end
 
 function breakVelocity()
     local V3 = Vector3.new(0, 0, 0)
-    for _, v in ipairs(Players.LocalPlayer.Character:GetDescendants()) do
+    for _, v in ipairs(getLocalCharacterSafe():GetDescendants()) do
         if v:IsA("BasePart") then
             v.Velocity, v.RotVelocity = V3, V3
         end
@@ -4338,7 +4339,7 @@ Players.PlayerRemoving:Connect(function(player)
         end
     end
     if viewing ~= nil and player == viewing then
-        workspace.CurrentCamera.CameraSubject = Players.LocalPlayer.Character
+        workspace.CurrentCamera.CameraSubject = getLocalCharacterSafe()
         viewing = nil
         if viewDied then
             viewDied:Disconnect()
@@ -5304,10 +5305,10 @@ local lastDeath
 
 function onDied()
     task.spawn(function()
-        if pcall(function() Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') end) and Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') then
-            Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').Died:Connect(function()
-                if getRoot(Players.LocalPlayer.Character) then
-                    lastDeath = getRoot(Players.LocalPlayer.Character).CFrame
+        if pcall(function() getLocalCharacterSafe():FindFirstChildOfClass('Humanoid') end) and getLocalCharacterSafe():FindFirstChildOfClass('Humanoid') then
+            getLocalCharacterSafe():FindFirstChildOfClass('Humanoid').Died:Connect(function()
+                if getRoot(getLocalCharacterSafe()) then
+                    lastDeath = getRoot(getLocalCharacterSafe()).CFrame
                 end
             end)
         else
@@ -5327,12 +5328,12 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
         execCmd('clip')
     end
 
-    repeat wait() until getRoot(Players.LocalPlayer.Character)
+    repeat wait() until getRoot(getLocalCharacterSafe())
 
     pcall(function()
         if spawnpoint and not refreshCmd and spawnpos ~= nil then
             wait(spDelay)
-            getRoot(Players.LocalPlayer.Character).CFrame = spawnpos
+            getRoot(getLocalCharacterSafe()).CFrame = spawnpos
         end
     end)
 
@@ -6000,165 +6001,7 @@ local espShowHealth = true
 local espShowTeam = true
 local espShowDistance = true
 
-function ESP(plr, logic)
-    if not plr or plr == Players.LocalPlayer or not ESPenabled then return end
-
-    task.spawn(function()
-        local character = plr.Character or plr.CharacterAdded:Wait()
-        if not character or not ESPenabled then return end
-
-        local rootPart = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
-        local head = character:FindFirstChild("Head") or character:WaitForChild("Head", 5)
-        local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5)
-
-        if not rootPart or not head or not humanoid or not ESPenabled then return end
-
-        local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
-        if existing then
-            return
-        end
-
-        local holder = Instance.new("Folder")
-        holder.Name = plr.Name .. "_ESP"
-        holder.Parent = COREGUI
-
-        -- Highlight follows the supplied Universal-ESP approach.
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "Highlight"
-        highlight.Adornee = character
-        highlight.FillTransparency = 0.78
-        highlight.OutlineTransparency = 0
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.Parent = holder
-
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "PlayerInfo"
-        billboard.Adornee = head
-        billboard.Size = UDim2.fromOffset(230, 52)
-        billboard.StudsOffset = Vector3.new(0, 2.8, 0)
-        billboard.AlwaysOnTop = true
-        billboard.MaxDistance = 10000
-        billboard.Parent = holder
-
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Name = "Username"
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Size = UDim2.new(1, 0, 0, 20)
-        nameLabel.Position = UDim2.fromOffset(0, 0)
-        nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextSize = 14
-        nameLabel.TextColor3 = Color3.new(1, 1, 1)
-        nameLabel.TextStrokeTransparency = 0
-        nameLabel.Text = plr.DisplayName .. "  (@" .. plr.Name .. ")"
-        nameLabel.Parent = billboard
-
-        local infoLabel = Instance.new("TextLabel")
-        infoLabel.Name = "Info"
-        infoLabel.BackgroundTransparency = 1
-        infoLabel.Size = UDim2.new(1, 0, 0, 18)
-        infoLabel.Position = UDim2.fromOffset(0, 20)
-        infoLabel.Font = Enum.Font.GothamMedium
-        infoLabel.TextSize = 11
-        infoLabel.TextColor3 = Color3.new(1, 1, 1)
-        infoLabel.TextStrokeTransparency = 0
-        infoLabel.Parent = billboard
-
-        local function updateESP()
-            if not holder.Parent or not plr.Parent then return false end
-
-            local char = plr.Character
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local currentHead = char and char:FindFirstChild("Head")
-
-            if not char or not hum or not root or not currentHead then
-                nameLabel.Text = plr.DisplayName .. "  (@" .. plr.Name .. ")"
-                infoLabel.Text = "Loading..."
-                return true
-            end
-
-            billboard.Adornee = currentHead
-            highlight.Adornee = char
-
-            -- LocalPlayer is initialized later in the script, so don't rely on
-            -- that later global here. Resolve it safely from Players each update.
-            local localPlayer = Players.LocalPlayer
-            local localChar = localPlayer and localPlayer.Character
-            local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-            local distanceText = ""
-
-            if espShowDistance and localRoot then
-                distanceText = string.format("  •  %dst", math.floor((localRoot.Position - root.Position).Magnitude + 0.5))
-            end
-
-            local teamText = ""
-            if espShowTeam then
-                teamText = "  •  " .. (plr.Team and plr.Team.Name or "Neutral")
-            end
-
-            local healthText = ""
-            if espShowHealth then
-                healthText = string.format("HP: %d/%d", math.max(0, math.floor(hum.Health + 0.5)), math.max(1, math.floor(hum.MaxHealth + 0.5)))
-            end
-
-            nameLabel.Text = plr.DisplayName .. "  (@" .. plr.Name .. ")"
-            infoLabel.Text = healthText .. teamText .. distanceText
-
-            -- Keep the supplied ESP's team-aware coloring behavior.
-            if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
-                highlight.FillColor = Color3.fromRGB(80, 220, 120)
-                highlight.OutlineColor = Color3.fromRGB(80, 255, 140)
-            else
-                highlight.FillColor = Color3.fromRGB(255, 90, 90)
-                highlight.OutlineColor = Color3.fromRGB(255, 120, 120)
-            end
-
-            return true
-        end
-
-        updateESP()
-
-        local charConnection = plr.CharacterAdded:Connect(function(newCharacter)
-            if not holder.Parent or not ESPenabled then return end
-
-            task.spawn(function()
-                local newHead = newCharacter:WaitForChild("Head", 5)
-                local newHumanoid = newCharacter:WaitForChild("Humanoid", 5)
-                local newRoot = newCharacter:WaitForChild("HumanoidRootPart", 5)
-
-                if newHead and newHumanoid and newRoot and holder.Parent and ESPenabled then
-                    billboard.Adornee = newHead
-                    highlight.Adornee = newCharacter
-                    updateESP()
-                end
-            end)
-        end)
-
-        local teamConnection = plr:GetPropertyChangedSignal("Team"):Connect(updateESP)
-
-        local healthConnection
-        healthConnection = humanoid.HealthChanged:Connect(function()
-            if holder.Parent and espShowHealth then
-                updateESP()
-            end
-        end)
-
-        local alive = true
-        task.spawn(function()
-            while alive and holder.Parent and ESPenabled and plr.Parent do
-                updateESP()
-                task.wait(0.15)
-            end
-        end)
-
-        holder.Destroying:Connect(function()
-            alive = false
-            if charConnection then charConnection:Disconnect() end
-            if teamConnection then teamConnection:Disconnect() end
-            if healthConnection then healthConnection:Disconnect() end
-        end)
-    end)
-end
+-- Legacy ESP implementation removed; maintained ESP is defined in the Combat UI section below.
 
 function CHMS(plr)
     task.spawn(function()
@@ -6297,8 +6140,8 @@ function Locate(plr)
                 end)
                 local function lcLoop()
                     if COREGUI:FindFirstChild(plr.Name..'_LC') then
-                        if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and Players.LocalPlayer.Character and getRoot(Players.LocalPlayer.Character) and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                            local pos = math.floor((getRoot(Players.LocalPlayer.Character).Position - getRoot(plr.Character).Position).magnitude)
+                        if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and getLocalCharacterSafe() and getRoot(getLocalCharacterSafe()) and getLocalCharacterSafe():FindFirstChildOfClass("Humanoid") then
+                            local pos = math.floor((getRoot(getLocalCharacterSafe()).Position - getRoot(plr.Character).Position).magnitude)
                             TextLabel.Text = 'Name: '..plr.Name..' | Health: '..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1)..' | Studs: '..pos
                         end
                     else
@@ -6603,7 +6446,7 @@ end)
 
 local function clicktpFunc()
     pcall(function()
-        local character = Players.LocalPlayer.Character
+        local character = getLocalCharacterSafe()
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         if humanoid and humanoid.SeatPart then
             humanoid.Sit = false
@@ -6628,11 +6471,11 @@ IYMouse.Button1Down:Connect(function()
     for i,v in pairs(binds) do
         if v.COMMAND == 'clicktp' then
             local input = v.KEY
-            if input == 'RightClick' and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) and Players.LocalPlayer.Character then
+            if input == 'RightClick' and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) and getLocalCharacterSafe() then
                 clicktpFunc()
-            elseif input == 'LeftClick' and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) and Players.LocalPlayer.Character then
+            elseif input == 'LeftClick' and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) and getLocalCharacterSafe() then
                 clicktpFunc()
-            elseif UserInputService:IsKeyDown(Enum.KeyCode[input:sub(14)]) and Players.LocalPlayer.Character then
+            elseif UserInputService:IsKeyDown(Enum.KeyCode[input:sub(14)]) and getLocalCharacterSafe() then
                 clicktpFunc()
             end
         elseif v.COMMAND == 'clickdel' then
@@ -7506,8 +7349,8 @@ end
 function NOFLY()
     FLYING = false
     if flyKeyDown or flyKeyUp then flyKeyDown:Disconnect() flyKeyUp:Disconnect() end
-    if Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') then
-        Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').PlatformStand = false
+    if getLocalCharacterSafe():FindFirstChildOfClass('Humanoid') then
+        getLocalCharacterSafe():FindFirstChildOfClass('Humanoid').PlatformStand = false
     end
     pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Custom end)
 end
@@ -9596,7 +9439,7 @@ addcmd('pathfindwalkto',{'pathfindfollow'},function(args, speaker)
     walkto = false
     wait()
     local players = getPlayer(args[1], speaker)
-    local hum = Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local hum = getLocalCharacterSafe():FindFirstChildOfClass("Humanoid")
     local path = PathService:CreatePath()
     for i,v in pairs(players)do
         if Players[v].Character ~= nil then
@@ -9632,7 +9475,7 @@ addcmd('pathfindwalktowaypoint',{'pathfindwalktowp'},function(args, speaker)
     waypointwalkto = false
     wait()
     local WPName = tostring(getstring(1, args))
-    local hum = Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local hum = getLocalCharacterSafe():FindFirstChildOfClass("Humanoid")
     local path = PathService:CreatePath()
     if speaker.Character then
         for i,_ in pairs(WayPoints) do
@@ -10024,7 +9867,7 @@ addcmd("toggleinvis", {}, function(args, speaker)
 end)
 
 addcmd('toolinvisible',{'toolinvis','tinvis'},function(args, speaker)
-    local Char  = Players.LocalPlayer.Character
+    local Char  = getLocalCharacterSafe()
     local touched = false
     local tpdback = false
     local box = Instance.new('Part')
@@ -11133,7 +10976,7 @@ addcmd('creeper',{},function(args, speaker)
 end)
 
 function getTorso(x)
-    x = x or Players.LocalPlayer.Character
+    x = x or getLocalCharacterSafe()
     return x:FindFirstChild("Torso") or x:FindFirstChild("UpperTorso") or x:FindFirstChild("LowerTorso") or x:FindFirstChild("HumanoidRootPart")
 end
 
@@ -11196,7 +11039,7 @@ addcmd('carpet',{},function(args, speaker)
             end)
             carpetLoop = RunService.Heartbeat:Connect(function()
                 pcall(function()
-                    getRoot(Players.LocalPlayer.Character).CFrame = getRoot(Players[carpetplr].Character).CFrame
+                    getRoot(getLocalCharacterSafe()).CFrame = getRoot(Players[carpetplr].Character).CFrame
                 end)
             end)
         end
@@ -11564,7 +11407,7 @@ addcmd('hatspin',{'spinhats'},function(args, speaker)
         keep.D = 50
         spinhats = RunService.Stepped:Connect(function()
             pcall(function()
-                keep.Position = Players.LocalPlayer.Character.Head.Position
+                keep.Position = getLocalCharacterSafe().Head.Position
             end)
         end)
     end
@@ -11648,7 +11491,7 @@ end)
 
 addcmd('noroot',{'removeroot','rroot'},function(args, speaker)
     if speaker.Character ~= nil then
-        local char = Players.LocalPlayer.Character
+        local char = getLocalCharacterSafe()
         char.Parent = nil
         char.Humanoid.RootPart:Destroy()
         char.Parent = workspace
@@ -11920,11 +11763,11 @@ end)
 addcmd('droptools',{'droptool'},function(args, speaker)
     for i,v in pairs(Players.LocalPlayer.Backpack:GetChildren()) do
         if v:IsA("Tool") then
-            v.Parent = Players.LocalPlayer.Character
+            v.Parent = getLocalCharacterSafe()
         end
     end
     wait()
-    for i,v in pairs(Players.LocalPlayer.Character:GetChildren()) do
+    for i,v in pairs(getLocalCharacterSafe():GetChildren()) do
         if v:IsA("Tool") then
             v.Parent = workspace
         end
@@ -12710,14 +12553,14 @@ addcmd('stareat',{'stare'},function(args, speaker)
         if stareLoop then
             stareLoop:Disconnect()
         end
-        if not getRoot(Players.LocalPlayer.Character) and getRoot(Players[v].Character) then return end
+        if not getRoot(getLocalCharacterSafe()) and getRoot(Players[v].Character) then return end
         local function stareFunc()
-            if Players.LocalPlayer.Character.PrimaryPart and Players:FindFirstChild(v) and Players[v].Character ~= nil and getRoot(Players[v].Character) then
-                local chrPos=Players.LocalPlayer.Character.PrimaryPart.Position
+            if getLocalCharacterSafe().PrimaryPart and Players:FindFirstChild(v) and Players[v].Character ~= nil and getRoot(Players[v].Character) then
+                local chrPos=getLocalCharacterSafe().PrimaryPart.Position
                 local tPos=getRoot(Players[v].Character).Position
                 local modTPos=Vector3.new(tPos.X,chrPos.Y,tPos.Z)
                 local newCF=CFrame.new(chrPos,modTPos)
-                Players.LocalPlayer.Character:SetPrimaryPartCFrame(newCF)
+                getLocalCharacterSafe():SetPrimaryPartCFrame(newCF)
             elseif not Players:FindFirstChild(v) then
                 stareLoop:Disconnect()
             end
@@ -14219,7 +14062,7 @@ local autoShootEnabled = false
 local stickyAim = true
 local showFov = true
 local visibilityCheck = true
-local teamCheck = true
+local teamCheck = false
 local knockCheck = true
 local healthCheck = true
 local triggerBot = false
@@ -14402,29 +14245,37 @@ espOptionsNote.Position = UDim2.fromOffset(16, 262)
 espOptionsNote.Size = UDim2.new(1, -32, 0, 18)
 
 function ESP(plr, logic)
-    local currentLocalPlayer = getLocalPlayerSafe()
-    if not plr or not plr.Parent or plr == currentLocalPlayer or not ESPenabled then return end
+    local me = getLocalPlayerSafe()
+    if not ESPenabled or not plr or not plr.Parent or plr == me then return end
 
-    -- Avoid duplicate ESP objects, but don't give up just because the
-    -- character has not spawned yet. CharacterAdded below will build it.
-    local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
-    if existing then return end
+    local espName = plr.Name .. "_ESP"
+    local existing = COREGUI:FindFirstChild(espName)
+    if existing then existing:Destroy() end
 
-    local function buildForCharacter(character)
-        if not ESPenabled or not plr.Parent or not character or character ~= plr.Character then
-            return
-        end
+    local holder = nil
+    local token = 0
+    local characterConnection
 
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        local head = character:FindFirstChild("Head")
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if not rootPart or not head or not humanoid then return end
+    local function destroyESP()
+        token += 1
+        if holder and holder.Parent then holder:Destroy() end
+        holder = nil
+    end
 
-        local old = COREGUI:FindFirstChild(plr.Name .. "_ESP")
-        if old then old:Destroy() end
+    local function build(character)
+        if not ESPenabled or not plr.Parent or not character or character ~= plr.Character then return end
 
-        local holder = Instance.new("Folder")
-        holder.Name = plr.Name .. "_ESP"
+        local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+        local head = character:FindFirstChild("Head") or character:WaitForChild("Head", 5)
+        local hum = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5)
+        if not ESPenabled or not plr.Parent or character ~= plr.Character or not root or not head or not hum then return end
+
+        if holder and holder.Parent then holder:Destroy() end
+        token += 1
+        local myToken = token
+
+        holder = Instance.new("Folder")
+        holder.Name = espName
         holder.Parent = COREGUI
 
         local highlight = Instance.new("Highlight")
@@ -14432,139 +14283,148 @@ function ESP(plr, logic)
         highlight.Adornee = character
         highlight.FillTransparency = 1
         highlight.OutlineTransparency = 0
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.OutlineColor = Color3.fromRGB(255,255,255)
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.Parent = holder
 
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "Info"
         billboard.Adornee = head
-        billboard.Size = UDim2.fromOffset(220, 64)
-        billboard.StudsOffset = Vector3.new(0, 2.8, 0)
+        billboard.Size = UDim2.fromOffset(230, 72)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
         billboard.AlwaysOnTop = true
         billboard.MaxDistance = 10000
         billboard.Parent = holder
 
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Name = "ESPText"
-        textLabel.Size = UDim2.new(1, 0, 0, 22)
-        textLabel.Position = UDim2.fromOffset(0, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 14
-        textLabel.TextStrokeTransparency = 0.5
-        textLabel.Text = plr.Name
-        textLabel.Parent = billboard
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "Username"
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Size = UDim2.new(1,0,0,22)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 14
+        nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
+        nameLabel.TextStrokeTransparency = 0.25
+        nameLabel.Text = plr.Name
+        nameLabel.Parent = billboard
+
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Name = "InfoText"
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Position = UDim2.fromOffset(0,21)
+        infoLabel.Size = UDim2.new(1,0,0,18)
+        infoLabel.Font = Enum.Font.GothamMedium
+        infoLabel.TextSize = 11
+        infoLabel.TextColor3 = Color3.fromRGB(235,235,235)
+        infoLabel.TextStrokeTransparency = 0.35
+        infoLabel.Parent = billboard
 
         local healthBack = Instance.new("Frame")
         healthBack.Name = "HealthBack"
-        healthBack.AnchorPoint = Vector2.new(0.5, 0)
-        healthBack.Position = UDim2.new(0.5, 0, 0, 24)
-        healthBack.Size = UDim2.fromOffset(180, 8)
-        healthBack.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        healthBack.AnchorPoint = Vector2.new(0.5,0)
+        healthBack.Position = UDim2.new(0.5,0,0,43)
+        healthBack.Size = UDim2.fromOffset(190,8)
+        healthBack.BackgroundColor3 = Color3.fromRGB(35,35,35)
         healthBack.BorderSizePixel = 0
         healthBack.Visible = espShowHealth
         healthBack.Parent = billboard
+        local backCorner = Instance.new("UICorner")
+        backCorner.CornerRadius = UDim.new(1,0)
+        backCorner.Parent = healthBack
 
         local healthFill = Instance.new("Frame")
         healthFill.Name = "HealthFill"
-        healthFill.Size = UDim2.fromScale(1, 1)
-        healthFill.BackgroundColor3 = Color3.fromRGB(70, 220, 110)
+        healthFill.Size = UDim2.fromScale(1,1)
+        healthFill.BackgroundColor3 = Color3.fromRGB(70,220,110)
         healthFill.BorderSizePixel = 0
         healthFill.Parent = healthBack
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(1,0)
+        fillCorner.Parent = healthFill
 
         local alive = true
-        holder.Destroying:Connect(function() alive = false end)
+        local healthConnection
+        local teamConnection
+
+        local function update()
+            if not alive or myToken ~= token or not holder or not holder.Parent or not plr.Parent then return false end
+            local char = plr.Character
+            local currentHum = char and char:FindFirstChildOfClass("Humanoid")
+            local currentRoot = char and char:FindFirstChild("HumanoidRootPart")
+            local currentHead = char and char:FindFirstChild("Head")
+            if char ~= character or not currentHum or not currentRoot or not currentHead then return false end
+
+            billboard.Adornee = currentHead
+            highlight.Adornee = char
+
+            local currentMe = getLocalPlayerSafe()
+            local myChar = currentMe and currentMe.Character
+            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            local distance = myRoot and (currentRoot.Position - myRoot.Position).Magnitude or 0
+            local health = math.max(0, math.floor(currentHum.Health + 0.5))
+            local maxHealth = math.max(1, math.floor(currentHum.MaxHealth + 0.5))
+            local ratio = math.clamp(currentHum.Health / maxHealth, 0, 1)
+
+            local parts = {plr.Name}
+            if espShowHealth then table.insert(parts, string.format("%d/%d HP", health, maxHealth)) end
+            if espShowTeam then table.insert(parts, plr.Team and plr.Team.Name or "Neutral") end
+            if espShowDistance then table.insert(parts, string.format("%.1fm", distance)) end
+            infoLabel.Text = table.concat(parts, " | ")
+
+            healthBack.Visible = espShowHealth
+            healthFill.Size = UDim2.new(ratio,0,1,0)
+            healthFill.BackgroundColor3 = ratio > 0.6 and Color3.fromRGB(70,220,110) or (ratio > 0.3 and Color3.fromRGB(235,190,60) or Color3.fromRGB(235,65,65))
+
+            if logic and currentMe and currentMe.Team and plr.Team and currentMe.Team == plr.Team then
+                highlight.OutlineColor = Color3.fromRGB(0,255,120)
+            else
+                highlight.OutlineColor = Color3.fromRGB(255,255,255)
+            end
+            return true
+        end
+
+        local function cleanup()
+            if not alive then return end
+            alive = false
+            if healthConnection then healthConnection:Disconnect() end
+            if teamConnection then teamConnection:Disconnect() end
+        end
+
+        healthConnection = hum.HealthChanged:Connect(update)
+        teamConnection = plr:GetPropertyChangedSignal("Team"):Connect(update)
+        holder.Destroying:Connect(cleanup)
+        update()
 
         task.spawn(function()
-            while alive and ESPenabled and plr.Parent and character == plr.Character do
-                local char = plr.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                local headNow = char and char:FindFirstChild("Head")
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                if not root or not headNow or not hum then
-                    break
-                end
-
-                billboard.Adornee = headNow
-
-                local currentLocalPlayer = getLocalPlayerSafe()
-                local localChar = currentLocalPlayer and currentLocalPlayer.Character
-                local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
-                local distance = localRoot and (root.Position - localRoot.Position).Magnitude or 0
-
-                local teamName = plr.Team and plr.Team.Name or "No Team"
-                local health = math.max(0, math.floor(hum.Health + 0.5))
-                local maxHealth = math.max(1, math.floor(hum.MaxHealth + 0.5))
-                local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-
-                local parts = {plr.Name}
-                if espShowHealth then
-                    table.insert(parts, string.format("%d/%d HP", health, maxHealth))
-                end
-                if espShowTeam then
-                    table.insert(parts, teamName)
-                end
-                if espShowDistance then
-                    table.insert(parts, string.format("%.1fm", distance))
-                end
-                textLabel.Text = table.concat(parts, " | ")
-
-                healthBack.Visible = espShowHealth
-                healthFill.Size = UDim2.new(ratio, 0, 1, 0)
-                if ratio > 0.6 then
-                    healthFill.BackgroundColor3 = Color3.fromRGB(70, 220, 110)
-                elseif ratio > 0.3 then
-                    healthFill.BackgroundColor3 = Color3.fromRGB(235, 190, 60)
-                else
-                    healthFill.BackgroundColor3 = Color3.fromRGB(235, 65, 65)
-                end
-
-                local currentLocalPlayer = getLocalPlayerSafe()
-                if logic and currentLocalPlayer then
-                    if currentLocalPlayer.Team ~= nil and plr.Team ~= nil and currentLocalPlayer.Team == plr.Team then
-                        highlight.OutlineColor = Color3.fromRGB(0, 255, 120)
-                    else
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    end
-                else
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                end
-
+            while alive and myToken == token and ESPenabled and plr.Parent and character == plr.Character do
+                update()
                 task.wait(0.1)
-            end
-
-            if holder.Parent then
-                holder:Destroy()
             end
         end)
     end
 
-    local function tryBuild()
-        if not ESPenabled or not plr.Parent then return end
-        local character = plr.Character
-        if character then
-            task.spawn(function()
-                character:WaitForChild("HumanoidRootPart", 3)
-                character:WaitForChild("Head", 3)
-                if character == plr.Character then
-                    buildForCharacter(character)
-                end
-            end)
-        end
+    local function tryBuild(character)
+        if not ESPenabled or not plr.Parent or not character or character ~= plr.Character then return end
+        task.spawn(function()
+            local root = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart",5)
+            local head = character:FindFirstChild("Head") or character:WaitForChild("Head",5)
+            local hum = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid",5)
+            if ESPenabled and plr.Parent and character == plr.Character and root and head and hum then build(character) end
+        end)
     end
 
-    -- Connect first so players who are currently respawning are not missed.
-    plr.CharacterAdded:Connect(function(character)
-        if not ESPenabled then return end
-        task.wait(0.15)
-        if character == plr.Character then
-            buildForCharacter(character)
+    characterConnection = plr.CharacterAdded:Connect(function(character)
+        destroyESP()
+        if ESPenabled then task.defer(function() tryBuild(character) end) end
+    end)
+
+    plr.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            if characterConnection then characterConnection:Disconnect() end
+            destroyESP()
         end
     end)
 
-    tryBuild()
+    tryBuild(plr.Character)
 end
 
 local safetyCard = makeCard(aimContent, "Filters", "Prevent low-value or invalid targets.")
@@ -14815,31 +14675,12 @@ local function isAlive(player)
 end
 
 local function isValidTeam(player)
-    if not teamCheck then
-        return true
+    if not teamCheck then return true end
+    local me = getLocalPlayerSafe()
+    if not me or not player or player == me then return false end
+    if me.Team ~= nil and player.Team ~= nil then
+        return me.Team ~= player.Team
     end
-
-    LocalPlayer = getLocalPlayerSafe()
-    if not LocalPlayer or not player or player == LocalPlayer then
-        return false
-    end
-
-    -- Team is authoritative when both players have one.
-    if LocalPlayer.Team ~= nil and player.Team ~= nil then
-        return LocalPlayer.Team ~= player.Team
-    end
-
-    -- If either player is neutral/unassigned, do not reject the target
-    -- simply because Roblox gives both the same neutral TeamColor.
-    local localColor = LocalPlayer.TeamColor
-    local playerColor = player.TeamColor
-    if localColor and playerColor then
-        local neutral = BrickColor.new("Medium stone grey")
-        if localColor ~= neutral and playerColor ~= neutral then
-            return localColor ~= playerColor
-        end
-    end
-
     return true
 end
 
@@ -15009,7 +14850,10 @@ end
 local function aimbotStep()
     LocalPlayer = getLocalPlayerSafe()
     Camera = workspace.CurrentCamera
-    if not Camera or not LocalPlayer then return end
+    if not Camera or not LocalPlayer then
+        currentTarget = nil
+        return
+    end
 
     updateFovCircle()
 
