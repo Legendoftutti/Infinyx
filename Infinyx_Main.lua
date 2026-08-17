@@ -325,6 +325,17 @@ Services = setmetatable({}, {
 })
 
 Players = Services.Players
+
+-- Safe local-player helpers. Some executors can expose Players before
+-- LocalPlayer/Character has finished initializing or while respawning.
+local function getLocalPlayerSafe()
+    return Players and Players.LocalPlayer or nil
+end
+
+local function getLocalCharacterSafe()
+    local player = getLocalPlayerSafe()
+    return player and player.Character or nil
+end
 UserInputService = Services.UserInputService
 TweenService = Services.TweenService
 HttpService = Services.HttpService
@@ -14343,6 +14354,16 @@ espToggle.ZIndex = 25
 espToggle.Visible = true
 setToggleVisual(espToggle, espEnabledUI)
 
+Players.PlayerAdded:Connect(function(player)
+    if ESPenabled and player ~= getLocalPlayerSafe() then
+        task.defer(function()
+            if ESPenabled and player.Parent then
+                ESP(player)
+            end
+        end)
+    end
+end)
+
 espToggle.MouseButton1Click:Connect(function()
     espEnabledUI = not espEnabledUI
     ESPenabled = espEnabledUI
@@ -14381,105 +14402,128 @@ espOptionsNote.Position = UDim2.fromOffset(16, 262)
 espOptionsNote.Size = UDim2.new(1, -32, 0, 18)
 
 function ESP(plr, logic)
-    if not plr or plr == Players.LocalPlayer or not ESPenabled then return end
+    local currentLocalPlayer = getLocalPlayerSafe()
+    if not plr or not plr.Parent or plr == currentLocalPlayer or not ESPenabled then return end
 
-    local character = plr.Character
-    if not character then return end
-
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local head = character:FindFirstChild("Head")
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not rootPart or not head or not humanoid then return end
-
-    -- Never rebuild an ESP that already exists.
+    -- Avoid duplicate ESP objects, but don't give up just because the
+    -- character has not spawned yet. CharacterAdded below will build it.
     local existing = COREGUI:FindFirstChild(plr.Name .. "_ESP")
     if existing then return end
 
-    local holder = Instance.new("Folder")
-    holder.Name = plr.Name .. "_ESP"
-    holder.Parent = COREGUI
+    local function buildForCharacter(character)
+        if not ESPenabled or not plr.Parent or not character or character ~= plr.Character then
+            return
+        end
 
-    -- This follows the supplied Universal-ESP design:
-    -- Highlight outline + name/status Billboard.
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "Highlight"
-    highlight.Adornee = character
-    highlight.FillTransparency = 1
-    highlight.OutlineTransparency = 0
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = holder
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not rootPart or not head or not humanoid then return end
 
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "Info"
-    billboard.Adornee = head
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 10000
-    billboard.Parent = holder
+        local old = COREGUI:FindFirstChild(plr.Name .. "_ESP")
+        if old then old:Destroy() end
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "ESPText"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 14
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.Text = "Loading..."
-    textLabel.Parent = billboard
+        local holder = Instance.new("Folder")
+        holder.Name = plr.Name .. "_ESP"
+        holder.Parent = COREGUI
 
-    local alive = true
-    holder.Destroying:Connect(function()
-        alive = false
-    end)
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "Highlight"
+        highlight.Adornee = character
+        highlight.FillTransparency = 1
+        highlight.OutlineTransparency = 0
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Parent = holder
 
-    -- Keep the supplied ESP information current without recreating it.
-    task.spawn(function()
-        while alive and ESPenabled and plr.Parent do
-            local char = plr.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local headNow = char and char:FindFirstChild("Head")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
-            local localChar = LocalPlayer.Character
-            local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "Info"
+        billboard.Adornee = head
+        billboard.Size = UDim2.fromOffset(220, 64)
+        billboard.StudsOffset = Vector3.new(0, 2.8, 0)
+        billboard.AlwaysOnTop = true
+        billboard.MaxDistance = 10000
+        billboard.Parent = holder
 
-            -- If the player respawned, replace only this player's ESP.
-            if char ~= character then
-                holder:Destroy()
-                task.wait(0.15)
-                if ESPenabled and plr.Parent then
-                    ESP(plr, logic)
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Name = "ESPText"
+        textLabel.Size = UDim2.new(1, 0, 0, 22)
+        textLabel.Position = UDim2.fromOffset(0, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        textLabel.Font = Enum.Font.GothamBold
+        textLabel.TextSize = 14
+        textLabel.TextStrokeTransparency = 0.5
+        textLabel.Text = plr.Name
+        textLabel.Parent = billboard
+
+        local healthBack = Instance.new("Frame")
+        healthBack.Name = "HealthBack"
+        healthBack.AnchorPoint = Vector2.new(0.5, 0)
+        healthBack.Position = UDim2.new(0.5, 0, 0, 24)
+        healthBack.Size = UDim2.fromOffset(180, 8)
+        healthBack.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        healthBack.BorderSizePixel = 0
+        healthBack.Visible = espShowHealth
+        healthBack.Parent = billboard
+
+        local healthFill = Instance.new("Frame")
+        healthFill.Name = "HealthFill"
+        healthFill.Size = UDim2.fromScale(1, 1)
+        healthFill.BackgroundColor3 = Color3.fromRGB(70, 220, 110)
+        healthFill.BorderSizePixel = 0
+        healthFill.Parent = healthBack
+
+        local alive = true
+        holder.Destroying:Connect(function() alive = false end)
+
+        task.spawn(function()
+            while alive and ESPenabled and plr.Parent and character == plr.Character do
+                local char = plr.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                local headNow = char and char:FindFirstChild("Head")
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if not root or not headNow or not hum then
+                    break
                 end
-                return
-            end
 
-            if root and headNow and hum then
                 billboard.Adornee = headNow
 
-                local distance = localRoot
-                    and (root.Position - localRoot.Position).Magnitude
-                    or 0
+                local currentLocalPlayer = getLocalPlayerSafe()
+                local localChar = currentLocalPlayer and currentLocalPlayer.Character
+                local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+                local distance = localRoot and (root.Position - localRoot.Position).Magnitude or 0
 
                 local teamName = plr.Team and plr.Team.Name or "No Team"
-                local health = math.floor(hum.Health + 0.5)
-                local maxHealth = math.floor(hum.MaxHealth + 0.5)
+                local health = math.max(0, math.floor(hum.Health + 0.5))
+                local maxHealth = math.max(1, math.floor(hum.MaxHealth + 0.5))
+                local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
 
-                textLabel.Text = string.format(
-                    "%s | %.1fm | %d/%d HP | %s",
-                    teamName,
-                    distance,
-                    health,
-                    maxHealth,
-                    plr.Name
-                )
+                local parts = {plr.Name}
+                if espShowHealth then
+                    table.insert(parts, string.format("%d/%d HP", health, maxHealth))
+                end
+                if espShowTeam then
+                    table.insert(parts, teamName)
+                end
+                if espShowDistance then
+                    table.insert(parts, string.format("%.1fm", distance))
+                end
+                textLabel.Text = table.concat(parts, " | ")
 
-                -- The supplied script uses a white outline. If Team Logic
-                -- is enabled, tint teammates/enemies while keeping the
-                -- supplied white outline style as the default.
-                if logic then
-                    if localPlayer and localPlayer.Team and plr.Team and localPlayer.Team == plr.Team then
+                healthBack.Visible = espShowHealth
+                healthFill.Size = UDim2.new(ratio, 0, 1, 0)
+                if ratio > 0.6 then
+                    healthFill.BackgroundColor3 = Color3.fromRGB(70, 220, 110)
+                elseif ratio > 0.3 then
+                    healthFill.BackgroundColor3 = Color3.fromRGB(235, 190, 60)
+                else
+                    healthFill.BackgroundColor3 = Color3.fromRGB(235, 65, 65)
+                end
+
+                local currentLocalPlayer = getLocalPlayerSafe()
+                if logic and currentLocalPlayer then
+                    if currentLocalPlayer.Team ~= nil and plr.Team ~= nil and currentLocalPlayer.Team == plr.Team then
                         highlight.OutlineColor = Color3.fromRGB(0, 255, 120)
                     else
                         highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -14487,23 +14531,41 @@ function ESP(plr, logic)
                 else
                     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
                 end
+
+                task.wait(0.1)
             end
 
-            task.wait(0.1)
-        end
-    end)
+            if holder.Parent then
+                holder:Destroy()
+            end
+        end)
+    end
 
-    plr.CharacterAdded:Connect(function()
+    local function tryBuild()
+        if not ESPenabled or not plr.Parent then return end
+        local character = plr.Character
+        if character then
+            task.spawn(function()
+                character:WaitForChild("HumanoidRootPart", 3)
+                character:WaitForChild("Head", 3)
+                if character == plr.Character then
+                    buildForCharacter(character)
+                end
+            end)
+        end
+    end
+
+    -- Connect first so players who are currently respawning are not missed.
+    plr.CharacterAdded:Connect(function(character)
         if not ESPenabled then return end
         task.wait(0.15)
-        if plr.Parent and plr.Character then
-            local old = COREGUI:FindFirstChild(plr.Name .. "_ESP")
-            if old then old:Destroy() end
-            ESP(plr, logic)
+        if character == plr.Character then
+            buildForCharacter(character)
         end
     end)
-end
 
+    tryBuild()
+end
 
 local safetyCard = makeCard(aimContent, "Filters", "Prevent low-value or invalid targets.")
 addToggleRow(safetyCard, 62, "Knock Check", "Skip knocked / KO / platform-stunned targets.", knockCheck, function(v) knockCheck = v end)
@@ -14707,7 +14769,7 @@ task.delay(0.25, updateAimScroll)
 -- ==========================================
 -- AIMBOT ENGINE (fully functional)
 -- ==========================================
-local LocalPlayer = Players.LocalPlayer
+local LocalPlayer = getLocalPlayerSafe()
 local Camera = workspace.CurrentCamera
 local aimConnection
 
@@ -14753,11 +14815,32 @@ local function isAlive(player)
 end
 
 local function isValidTeam(player)
-    if not teamCheck then return true end
-    if LocalPlayer.Team ~= nil and player.Team ~= nil then
-        return player.Team ~= LocalPlayer.Team
+    if not teamCheck then
+        return true
     end
-    return player.TeamColor ~= LocalPlayer.TeamColor
+
+    LocalPlayer = getLocalPlayerSafe()
+    if not LocalPlayer or not player or player == LocalPlayer then
+        return false
+    end
+
+    -- Team is authoritative when both players have one.
+    if LocalPlayer.Team ~= nil and player.Team ~= nil then
+        return LocalPlayer.Team ~= player.Team
+    end
+
+    -- If either player is neutral/unassigned, do not reject the target
+    -- simply because Roblox gives both the same neutral TeamColor.
+    local localColor = LocalPlayer.TeamColor
+    local playerColor = player.TeamColor
+    if localColor and playerColor then
+        local neutral = BrickColor.new("Medium stone grey")
+        if localColor ~= neutral and playerColor ~= neutral then
+            return localColor ~= playerColor
+        end
+    end
+
+    return true
 end
 
 local function getTargetPosition(part)
@@ -14771,27 +14854,6 @@ local function getTargetPosition(part)
         position += Vector3.new(0, 0.15, 0)
     end
     return position
-end
-
-local function isSameTeam(player)
-    if not teamCheck then
-        return false
-    end
-
-    if not player or player == LocalPlayer then
-        return true
-    end
-
-    -- Prefer Team, then TeamColor, then neutral.
-    if LocalPlayer.Team ~= nil and player.Team ~= nil then
-        return LocalPlayer.Team == player.Team
-    end
-
-    if LocalPlayer.TeamColor and player.TeamColor then
-        return LocalPlayer.TeamColor == player.TeamColor
-    end
-
-    return false
 end
 
 local function hasLineOfSight(character, targetPosition)
@@ -14814,10 +14876,8 @@ local function hasLineOfSight(character, targetPosition)
 
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {
-        LocalPlayer.Character,
-        camera
-    }
+    local localCharacter = getLocalCharacterSafe()
+    params.FilterDescendantsInstances = localCharacter and {localCharacter, camera} or {camera}
     params.IgnoreWater = true
 
     -- A single ray can hit an accessory/transparent decoration first.
@@ -14825,10 +14885,7 @@ local function hasLineOfSight(character, targetPosition)
     -- character or a real obstruction.
     local remainingOrigin = origin
     local remainingDirection = direction
-    local ignored = {
-        LocalPlayer.Character,
-        camera
-    }
+    local ignored = localCharacter and {localCharacter, camera} or {camera}
 
     for _ = 1, 6 do
         params.FilterDescendantsInstances = ignored
@@ -14858,13 +14915,6 @@ local function hasLineOfSight(character, targetPosition)
     end
 
     return false
-end
-
-local function isValidTeam(player)
-    if not teamCheck then
-        return true
-    end
-    return not isSameTeam(player)
 end
 
 local function getClosestTarget()
@@ -14935,7 +14985,8 @@ local function firePrimary()
             vim:SendMouseButtonEvent(0, 0, 0, false, game, 0)
         end)
     else
-        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+        local localCharacter = getLocalCharacterSafe()
+        local tool = localCharacter and localCharacter:FindFirstChildWhichIsA("Tool")
         if tool then
             pcall(tool.Activate, tool)
         end
@@ -14956,8 +15007,9 @@ local function aimAt(part)
 end
 
 local function aimbotStep()
+    LocalPlayer = getLocalPlayerSafe()
     Camera = workspace.CurrentCamera
-    if not Camera then return end
+    if not Camera or not LocalPlayer then return end
 
     updateFovCircle()
 
